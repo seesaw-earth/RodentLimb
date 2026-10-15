@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 200" width="1024" height="200" font-family="-apple-system,'SF Pro Text','PingFang SC','Helvetica Neue',Arial,sans-serif">
+<rect width="1024" height="200" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a94a6"/></marker></defs>
+<rect x="24" y="58" width="168" height="86" rx="16" fill="#eaf2ff" stroke="#2f7bf5" stroke-width="1.5"/>
+<text x="108.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">视频</text>
+<text x="108.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">每段一只小鼠，相机固定</text>
+<line x1="196" y1="101" x2="222" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="226" y="58" width="168" height="86" rx="16" fill="#eaf2ff" stroke="#2f7bf5" stroke-width="1.5"/>
+<text x="310.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">逐帧姿态</text>
+<text x="310.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">V2 模型 · 7 个关键点</text>
+<line x1="398" y1="101" x2="424" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="428" y="58" width="168" height="86" rx="16" fill="#f3f5f8" stroke="#5a6475" stroke-width="1.5"/>
+<text x="512.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">预处理</text>
+<text x="512.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">置信度 · 补缺 · 平滑</text>
+<line x1="600" y1="101" x2="626" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="630" y="58" width="168" height="86" rx="16" fill="#f3f5f8" stroke="#5a6475" stroke-width="1.5"/>
+<text x="714.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">计算指标</text>
+<text x="714.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">范式分析器 · 体长单位</text>
+<line x1="802" y1="101" x2="828" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="832" y="58" width="168" height="86" rx="16" fill="#f3f5f8" stroke="#5a6475" stroke-width="1.5"/>
+<text x="916.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">结果</text>
+<text x="916.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">回放 · 修改 · 导出</text>
+<path d="M24 40 v-10 h370 v10" fill="none" stroke="#2f7bf5" stroke-width="1.5"/>
+<text x="209.0" y="22" text-anchor="middle" font-size="13" fill="#1f5bef" font-weight="600">每段视频只运行一次，在 iPhone 上完成</text>
+<path d="M428 158 v10 h572 v-10" fill="none" stroke="#12a05a" stroke-width="1.5"/>
+<text x="714.0" y="190" text-anchor="middle" font-size="13" fill="#0a7a44" font-weight="600">即时 —— 修改参数后立即重算</text>
+</svg>

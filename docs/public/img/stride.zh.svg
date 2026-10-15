@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 300" width="980" height="300" font-family="-apple-system,'SF Pro Text','PingFang SC','Helvetica Neue',Arial,sans-serif">
+<rect width="980" height="300" fill="#ffffff"/>
+<text x="60" y="58" text-anchor="end" font-size="15" font-weight="600" fill="#1e7fd8">LF</text>
+<line x1="90" y1="53" x2="940" y2="53" stroke="#e3e7ee" stroke-width="1"/>
+<rect x="90.0" y="40" width="180.0" height="26" rx="6" fill="#1e7fd8"/>
+<rect x="390.0" y="40" width="180.0" height="26" rx="6" fill="#1e7fd8"/>
+<rect x="690.0" y="40" width="180.0" height="26" rx="6" fill="#1e7fd8"/>
+<text x="60" y="102" text-anchor="end" font-size="15" font-weight="600" fill="#e5404f">RF</text>
+<line x1="90" y1="97" x2="940" y2="97" stroke="#e3e7ee" stroke-width="1"/>
+<rect x="90" y="84" width="30.0" height="26" rx="6" fill="#e5404f"/>
+<rect x="240.0" y="84" width="180.0" height="26" rx="6" fill="#e5404f"/>
+<rect x="540.0" y="84" width="180.0" height="26" rx="6" fill="#e5404f"/>
+<rect x="840.0" y="84" width="100.0" height="26" rx="6" fill="#e5404f"/>
+<text x="60" y="146" text-anchor="end" font-size="15" font-weight="600" fill="#12a05a">LH</text>
+<line x1="90" y1="141" x2="940" y2="141" stroke="#e3e7ee" stroke-width="1"/>
+<rect x="90" y="128" width="30.0" height="26" rx="6" fill="#12a05a"/>
+<rect x="240.0" y="128" width="180.0" height="26" rx="6" fill="#12a05a"/>
+<rect x="540.0" y="128" width="180.0" height="26" rx="6" fill="#12a05a"/>
+<rect x="840.0" y="128" width="100.0" height="26" rx="6" fill="#12a05a"/>
+<text x="60" y="190" text-anchor="end" font-size="15" font-weight="600" fill="#8a4fe0">RH</text>
+<line x1="90" y1="185" x2="940" y2="185" stroke="#e3e7ee" stroke-width="1"/>
+<rect x="90.0" y="172" width="180.0" height="26" rx="6" fill="#8a4fe0"/>
+<rect x="390.0" y="172" width="180.0" height="26" rx="6" fill="#8a4fe0"/>
+<rect x="690.0" y="172" width="180.0" height="26" rx="6" fill="#8a4fe0"/>
+<line x1="240.0" y1="122" x2="240.0" y2="232" stroke="#1b2330" stroke-dasharray="4 3"/>
+<line x1="540.0" y1="122" x2="540.0" y2="232" stroke="#1b2330" stroke-dasharray="4 3"/>
+<path d="M240.0 226 H540.0" stroke="#1b2330" stroke-width="1.5" marker-start="url(#m)" marker-end="url(#m)"/>
+<defs><marker id="m" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#1b2330" stroke-width="1.5"/></marker></defs>
+<text x="390.0" y="250" text-anchor="middle" font-size="14" fill="#1b2330">LH 步幅（着地 → 下一次着地）</text>
+<text x="330.0" y="146" text-anchor="middle" font-size="12.5" fill="#fff" font-weight="600">支撑相</text>
+<text x="480.0" y="146" text-anchor="middle" font-size="12.5" fill="#12a05a" font-weight="600">摆动相</text>
+<path d="M240.0 214 H390.0" stroke="#8a4fe0" stroke-width="1.5" marker-end="url(#m)"/>
+<text x="315.0" y="208" text-anchor="middle" font-size="12.5" fill="#8a4fe0">Δt</text>
+<text x="90" y="282" font-size="13.5" fill="#5a6475">占空比 = 支撑相 ÷ 步幅时长   ·   RH 相位 = Δt ÷ 步幅时长   ·   LH→RH ≈ 0.5 = alternating</text>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 200" width="1024" height="200" font-family="-apple-system,'SF Pro Text','PingFang SC','Helvetica Neue',Arial,sans-serif">
+<rect width="1024" height="200" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a94a6"/></marker></defs>
+<rect x="24" y="58" width="168" height="86" rx="16" fill="#eaf2ff" stroke="#2f7bf5" stroke-width="1.5"/>
+<text x="108.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">Video</text>
+<text x="108.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">one mouse, fixed camera</text>
+<line x1="196" y1="101" x2="222" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="226" y="58" width="168" height="86" rx="16" fill="#eaf2ff" stroke="#2f7bf5" stroke-width="1.5"/>
+<text x="310.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">Pose, every frame</text>
+<text x="310.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">V2 model · 7 keypoints</text>
+<line x1="398" y1="101" x2="424" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="428" y="58" width="168" height="86" rx="16" fill="#f3f5f8" stroke="#5a6475" stroke-width="1.5"/>
+<text x="512.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">Clean</text>
+<text x="512.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">filter · fill gaps · smooth</text>
+<line x1="600" y1="101" x2="626" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="630" y="58" width="168" height="86" rx="16" fill="#f3f5f8" stroke="#5a6475" stroke-width="1.5"/>
+<text x="714.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">Measure</text>
+<text x="714.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">per assay, in body lengths</text>
+<line x1="802" y1="101" x2="828" y2="101" stroke="#8a94a6" stroke-width="2" marker-end="url(#a)"/>
+<rect x="832" y="58" width="168" height="86" rx="16" fill="#f3f5f8" stroke="#5a6475" stroke-width="1.5"/>
+<text x="916.0" y="96" text-anchor="middle" font-size="17" font-weight="600" fill="#1b2330">Results</text>
+<text x="916.0" y="120" text-anchor="middle" font-size="12" fill="#5a6475">review · edit · export</text>
+<path d="M24 40 v-10 h370 v10" fill="none" stroke="#2f7bf5" stroke-width="1.5"/>
+<text x="209.0" y="22" text-anchor="middle" font-size="13" fill="#1f5bef" font-weight="600">Runs once per video, on the iPhone</text>
+<path d="M428 158 v10 h572 v-10" fill="none" stroke="#12a05a" stroke-width="1.5"/>
+<text x="714.0" y="190" text-anchor="middle" font-size="13" fill="#0a7a44" font-weight="600">Instant — re-runs whenever you change a parameter</text>
+</svg>

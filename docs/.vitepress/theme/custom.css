@@ -1,0 +1,212 @@
+/* RodentLimb brand: sky-to-cobalt gradient of the app icon; paw colors match the app. */
+:root {
+  --rf-blue: #2f7bf5;
+  --rf-blue-dark: #1f5bef;
+  --rf-teal: #3dc8ef;
+
+  --vp-c-brand-1: #1f63e0;
+  --vp-c-brand-2: #2f7bf5;
+  --vp-c-brand-3: #2f7bf5;
+  --vp-c-brand-soft: rgba(47, 123, 245, 0.14);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #1f5bef 15%, #3dc8ef 85%);
+  --vp-home-hero-image-background-image: linear-gradient(-45deg, rgba(31, 91, 239, 0.45) 40%, rgba(127, 230, 246, 0.5) 60%);
+  --vp-home-hero-image-filter: blur(56px);
+
+  --vp-font-family-base: 'Inter', ui-sans-serif, system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+}
+
+.dark {
+  --vp-c-brand-1: #7cb1ff;
+  --vp-c-brand-2: #5a9bff;
+  --vp-c-brand-3: #2f7bf5;
+  --vp-c-brand-soft: rgba(124, 177, 255, 0.16);
+}
+
+.VPHero .image-src {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 22%;
+}
+
+@media (min-width: 640px) {
+  .VPHero .image-src {
+    max-width: 260px;
+    max-height: 260px;
+  }
+}
+
+/* Figures: image + caption. Figures are drawn on white, so keep them on white in dark mode. */
+.vp-doc figure {
+  margin: 24px 0;
+}
+
+.vp-doc figure p {
+  margin: 0;
+}
+
+.vp-doc figure img,
+.vp-doc img.figure {
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+  border: 1px solid var(--vp-c-divider);
+  background: #fff;
+}
+
+.vp-doc figcaption {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--vp-c-text-2);
+}
+
+.dark .vp-doc figure img {
+  padding: 6px;
+}
+
+/* Step lists in the guide read better with a little more air. */
+.vp-doc ol > li + li {
+  margin-top: 6px;
+}
+
+/* Small UI-label chip, e.g. <kbd>Generate Preview</kbd>. */
+.vp-doc kbd {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  font-family: var(--vp-font-family-base);
+  font-size: 0.86em;
+  line-height: 1.6;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  white-space: nowrap;
+}
+
+/* Home page extras */
+.rf-home {
+  max-width: 1152px;
+  margin: 0 auto;
+}
+
+.rf-home h2 {
+  border-top: none;
+  margin-top: 40px;
+  padding-top: 0;
+}
+
+.rf-lang {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+
+.rf-lang a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rf-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.rf-cards a {
+  display: block;
+  padding: 16px 18px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  text-decoration: none !important;
+  color: var(--vp-c-text-1) !important;
+  transition: border-color 0.2s;
+}
+
+.rf-cards a:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.rf-cards strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--vp-c-brand-1);
+}
+
+.rf-cards span {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--vp-c-text-2);
+}
+
+/* Wide tables scroll inside themselves on phones instead of widening the page. */
+.vp-doc table {
+  display: block;
+  overflow-x: auto;
+}
+
+/* Short column headers ("Unit", "单位") should not break mid-word on phones. */
+.vp-doc th {
+  white-space: nowrap;
+}
+
+/* Repository link shown as a prominent box on the "Open source" page and the home page. */
+.vp-doc .rf-repo,
+.rf-home .rf-repo {
+  margin: 16px 0;
+}
+
+.vp-doc .rf-repo a,
+.rf-home .rf-repo a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+  font-weight: 600;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.vp-doc .rf-repo a::before,
+.rf-home .rf-repo a::before {
+  content: '';
+  flex: none;
+  width: 20px;
+  height: 20px;
+  background-color: currentColor;
+  -webkit-mask: var(--rf-gh-icon) no-repeat center / contain;
+  mask: var(--rf-gh-icon) no-repeat center / contain;
+}
+
+:root {
+  --rf-gh-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z'/%3E%3C/svg%3E");
+}
+
+/* Paw color chips, matching the app and icon. */
+.paw { display: inline-block; width: 0.75em; height: 0.75em; border-radius: 50%; vertical-align: -0.05em; margin-right: 4px; }
+.paw.lf { background: #1e7fd8; }
+.paw.rf { background: #e5404f; }
+.paw.lh { background: #12a05a; }
+.paw.rh { background: #8a4fe0; }
+.paw.tb { background: #e58fa6; }
+.paw.nose { background: #f2a500; }
+.paw.mouth { background: #5fc3e8; }
+
+/* Assay color strips on the overview cards. */
+.rf-cards a.tst { border-left: 4px solid #7c4ddb; }
+.rf-cards a.cyl { border-left: 4px solid #0b7480; }
+.rf-cards a.gait { border-left: 4px solid #ab4f08; }
+
+/* Diagrams are SVG with their own white background. */
+.vp-doc figure img[src$=".svg"] { padding: 8px; }
