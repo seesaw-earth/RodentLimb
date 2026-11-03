@@ -1,0 +1,4 @@
+/* 本地化的 Info.plist 值。en.lproj 与 zh-Hans.lproj 文件夹同时告诉 macOS RodentLimb 支持的语言，
+   使系统提供的菜单（编辑、窗口、退出、打开/存储面板）跟随 App 内的语言选择。 */
+"CFBundleDisplayName" = "RodentLimb";
+"CFBundleName" = "RodentLimb";

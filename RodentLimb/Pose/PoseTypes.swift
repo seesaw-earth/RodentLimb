@@ -141,6 +141,31 @@ struct PoseTrack: Codable {
         return CGPoint(x: Double(px), y: Double(py))
     }
 
+    /// Repairs a track read from disk so that analysis can never index past the end of an array:
+    /// one series per keypoint and every per-frame array of the same length (a file written
+    /// while the app was being terminated, or edited by hand, could otherwise crash the app).
+    mutating func sanitize() {
+        let k = Kp.allCases.count
+        func fix(_ a: [[Float]]) -> [[Float]] {
+            a.count == k ? a : (0..<k).map { $0 < a.count ? a[$0] : [] }
+        }
+        x = fix(x); y = fix(y); c = fix(c)
+        var n = min(times.count, boxConfidence.count)
+        for i in 0..<k { n = min(n, x[i].count, y[i].count, c[i].count) }
+        if times.count != n { times = Array(times.prefix(n)) }
+        if boxConfidence.count != n { boxConfidence = Array(boxConfidence.prefix(n)) }
+        for i in 0..<k {
+            if x[i].count != n { x[i] = Array(x[i].prefix(n)) }
+            if y[i].count != n { y[i] = Array(y[i].prefix(n)) }
+            if c[i].count != n { c[i] = Array(c[i].prefix(n)) }
+        }
+        if !fps.isFinite || fps <= 0 { fps = 30 }
+        if !duration.isFinite || duration < 0 { duration = max(0, (times.last ?? 0).finiteOr(0)) }
+        if let o = timeOffset, !o.isFinite { timeOffset = 0 }
+        width = max(1, width)
+        height = max(1, height)
+    }
+
     var detectedFraction: Double {
         guard !boxConfidence.isEmpty else { return 0 }
         return Double(boxConfidence.filter { $0 > 0 }.count) / Double(boxConfidence.count)

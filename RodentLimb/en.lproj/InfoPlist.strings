@@ -1,1 +1,2 @@
 "CFBundleDisplayName" = "RodentLimb";
+"NSPhotoLibraryAddUsageDescription" = "RodentLimb saves an exported skeleton video to your photo library only when you choose Save Video.";

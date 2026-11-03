@@ -1,16 +1,32 @@
-# Model provenance — CylinderMousePoseV2
+# Model provenance
 
-| Field | State |
+RodentLimb 1.4.2 ships two Core ML pose models, in the Mac and in the iPhone / iPad app. Their
+training data, training runs, test results and what to cite are documented on the website:
+https://seesaw-earth.github.io/RodentLimb/models/
+
+| Model | File | Use for |
+|---|---|---|
+| CylinderPose7 (default) | `CylinderPose7_FP16_640.mlpackage` (19 MB) | Ordinary room light |
+| PalmReaderPose8 | `PalmReaderPose8_640_W8A16.mlpackage` (9.8 MB) | Near-infrared, dark box, filmed from below |
+
+## Why the weights are not in this repository
+
+The weights are distributed inside the apps only. They are not committed here, and not attached to
+releases, until the redistribution of models derived from the training videos and labels has been
+confirmed with their owners:
+
+| Question | State |
 |---|---|
-| File | `RodentLimb/Models/CylinderMousePoseV2.mlpackage` (installed locally with `Tools/install_model.py`, not committed) |
-| Architecture | Ultralytics YOLO pose (Stage A, 640 × 640 input), raw 7-keypoint head exported to Core ML (nms=False) |
-| Keypoints | L_fore_paw, L_hind_paw, R_fore_paw, R_hind_paw, tail_base, nose, mouth (`cylinder_DLC/config.yaml`) |
-| Training | Distilled from a DeepLabCut model on cylinder-test videos (Colab run `20261014_1156_dlc_distill`) |
-| Selected over V1 | Side-by-side A/B comparison on the same videos (CylinderPose dual-model app, Oct 2026) |
-| Model owner | **TO CONFIRM** |
-| Training videos: owner, consent, redistribution | **TO CONFIRM** |
-| Pretrained weights used | **TO CONFIRM** |
-| Per-keypoint accuracy on held-out frames | **TO ADD** |
-| Accuracy on tail-suspension and gait views | **TO ADD** (outside the training domain) |
+| CylinderPose7: training videos and labels may be redistributed in derived form | To confirm with the laboratory that recorded them |
+| PalmReaderPose8: terms of the Barkai et al. (2025) training set (Zenodo 10.5281/zenodo.16321240) for derived models | To confirm against the Zenodo record's licence |
 
-Before publishing the weights (for example as a GitHub release asset), confirm that the training videos and labels may be redistributed in derived form.
+To build the apps with the models, install them locally (they stay out of git, see `.gitignore`):
+
+```bash
+python3 Tools/install_model.py     --fp16 CylinderPose7_FP16_640.mlpackage.zip --nir PalmReaderPose8_640_W8A16.mlpackage.zip
+python3 Mac/tools/install_model.py --fp16 CylinderPose7_FP16_640.mlpackage.zip --nir PalmReaderPose8_640_W8A16.mlpackage.zip
+```
+
+Earlier versions used `CylinderMousePoseV2` (the same network as CylinderPose7 in full precision).
+It is no longer included; videos tracked with it keep their keypoints and are labelled with its name
+in exports.

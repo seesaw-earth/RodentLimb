@@ -1,3 +1,14 @@
+// PoseDecoder.swift — decodes the raw Ultralytics pose head of the video's model (same candidate
+// selection, letterbox mapping and clamping as the Mac app, so a video gives the same keypoints on both).
+//
+//   [1,5+3K,8400] = cx, cy, w, h, 1 class score, K × (x, y, confidence)   (raw one-to-many head)
+//   also [1,8400,5+3K] and YOLO26 nms=False [1,300,6+3K] (end-to-end: x1 y1 x2 y2, conf, class, K × 3)
+// K = 7 for CylinderPose7 / CylinderMousePoseV2 (26 / 27 channels), 8 for PalmReaderPose8 (29 / 30).
+// The model's keypoints are mapped onto the stored 7 (PoseModelID.keypointMap); a stored keypoint the
+// model does not have (PalmReaderPose8: mouth) is returned as missing.
+// Coordinates are in model pixels and mapped back with Vision's .scaleFit letterbox.
+// Outputs may be Float16 (CylinderPose7_FP16_640), Float32 or Double, with any strides.
+
 import Foundation
 import CoreML
 import CoreGraphics
@@ -10,35 +21,34 @@ struct DecodedPose {
     var keypoints: [RawKeypoint]
 }
 
-// Decodes the raw Ultralytics pose head from user's Oct 2026 export:
-// [1,26,8400] = cx,cy,w,h,1 class score, 7*(x,y,confidence).
-// Also accepts [1,8400,26] and YOLO26 nms=False [1,300,27].
-// Coordinates are in 640x640 model pixels and mapped back using Vision .scaleFit.
 final class PoseDecoder {
     private let threshold: Double
     private let imageWidth: Double
     private let imageHeight: Double
     private let inputSize: Double
+    private let keypointCount: Int
+    /// Stored keypoint (Kp order) → model keypoint index.
+    private let map: [Int?]
 
-    init(threshold: Double, imageWidth: Int, imageHeight: Int, inputSize: Int = 640) {
+    init(threshold: Double, imageWidth: Int, imageHeight: Int, inputSize: Int = 640, model: PoseModelID = .standard) {
         self.threshold = threshold
         self.imageWidth = Double(imageWidth)
         self.imageHeight = Double(imageHeight)
         self.inputSize = Double(inputSize)
+        self.keypointCount = model.keypointCount
+        self.map = model.keypointMap
     }
 
     func decode(_ array: MLMultiArray) throws -> DecodedPose? {
-        let t = try PoseTensor(array)
-        guard t.channels == 26 || t.channels == 27 else {
+        let t = try PoseTensor(array, keypointCount: keypointCount)
+        guard let layout = PoseOutputLayout.detect(channels: t.channels, keypointCount: keypointCount) else {
             throw PoseError.unsupportedModel("tensor \(array.shape)")
         }
-
-        // 26: raw one-to-many xywh output; 27: end-to-end xyxy+confidence+class+21 pose coords.
-        let isEndToEnd = t.channels == 27
+        let isEndToEnd = layout.endToEnd
         var best = -1
         var bestScore = threshold
         for i in 0..<t.candidates {
-            let confidence = Double(t.value(isEndToEnd ? 4 : 4, i))
+            let confidence = Double(t.value(4, i))
             if confidence > bestScore && confidence.isFinite {
                 bestScore = confidence
                 best = i
@@ -48,44 +58,36 @@ final class PoseDecoder {
 
         let x1: Double, y1: Double, x2: Double, y2: Double
         if isEndToEnd {
-            x1 = Double(t.value(0, best))
-            y1 = Double(t.value(1, best))
-            x2 = Double(t.value(2, best))
-            y2 = Double(t.value(3, best))
+            x1 = Double(t.value(0, best)); y1 = Double(t.value(1, best))
+            x2 = Double(t.value(2, best)); y2 = Double(t.value(3, best))
         } else {
-            let cx = Double(t.value(0, best))
-            let cy = Double(t.value(1, best))
-            let w  = Double(t.value(2, best))
-            let h  = Double(t.value(3, best))
+            let cx = Double(t.value(0, best)), cy = Double(t.value(1, best))
+            let w = Double(t.value(2, best)), h = Double(t.value(3, best))
             x1 = cx - w / 2; y1 = cy - h / 2
             x2 = cx + w / 2; y2 = cy + h / 2
         }
 
-        func restore(_ x: Double, _ y: Double) -> (Double, Double) {
-            let scale = min(inputSize / imageWidth, inputSize / imageHeight)
-            let padX = (inputSize - imageWidth * scale) / 2
-            let padY = (inputSize - imageHeight * scale) / 2
-            return ((x - padX) / scale, (y - padY) / scale)
-        }
-        func clamp(_ value: Double, _ maximum: Double) -> Double {
-            return min(max(0, value), maximum)
-        }
+        let scale = min(inputSize / imageWidth, inputSize / imageHeight)
+        let padX = (inputSize - imageWidth * scale) / 2
+        let padY = (inputSize - imageHeight * scale) / 2
+        func restore(_ x: Double, _ y: Double) -> (Double, Double) { ((x - padX) / scale, (y - padY) / scale) }
+        func clamp(_ v: Double, _ m: Double) -> Double { min(max(0, v), m) }
+
         let (rx1, ry1) = restore(x1, y1)
         let (rx2, ry2) = restore(x2, y2)
-        guard [rx1, ry1, rx2, ry2].allSatisfy(\.isFinite), rx2 > rx1, ry2 > ry1 else {
-            return nil
-        }
+        guard [rx1, ry1, rx2, ry2].allSatisfy(\.isFinite), rx2 > rx1, ry2 > ry1 else { return nil }
         let box = CGRect(x: clamp(rx1, imageWidth), y: clamp(ry1, imageHeight),
                          width: clamp(rx2, imageWidth) - clamp(rx1, imageWidth),
                          height: clamp(ry2, imageHeight) - clamp(ry1, imageHeight))
 
-        let start = isEndToEnd ? 6 : 5
+        let start = layout.firstKeypointChannel
         let kp = Kp.allCases.map { part -> RawKeypoint in
-            let channel = start + part.rawValue * 3
-            let vx = Double(t.value(channel, best))
-            let vy = Double(t.value(channel + 1, best))
+            guard part.rawValue < map.count, let index = map[part.rawValue], index < keypointCount else {
+                return RawKeypoint(x: -1, y: -1, confidence: 0)
+            }
+            let channel = start + index * 3
+            let (x, y) = restore(Double(t.value(channel, best)), Double(t.value(channel + 1, best)))
             let score = Double(t.value(channel + 2, best))
-            let (x, y) = restore(vx, vy)
             let inFrame = x.isFinite && y.isFinite && x >= 0 && x < imageWidth && y >= 0 && y < imageHeight
             return RawKeypoint(x: inFrame ? x : -1, y: inFrame ? y : -1,
                                confidence: inFrame && score.isFinite ? max(0, min(1, score)) : 0)
@@ -94,8 +96,8 @@ final class PoseDecoder {
     }
 }
 
-// The arrays may be Float16 or Float32 with non-standard strides.
-// Read without boxing a NSNumber for every candidate in every frame.
+/// Reads the output tensor (Float16 / Float32 / Double, any strides) without boxing an NSNumber per
+/// value for every candidate in every frame.
 private struct PoseTensor {
     let array: MLMultiArray
     let candidates: Int
@@ -105,21 +107,22 @@ private struct PoseTensor {
     private let hasBatchDimension: Bool
     private let channelsFirst: Bool
 
-    init(_ array: MLMultiArray) throws {
+    init(_ array: MLMultiArray, keypointCount: Int) throws {
         let dims = array.shape.map { $0.intValue }
         let strides = array.strides.map { $0.intValue }
         let offset = dims.count == 3 && dims[0] == 1 ? 1 : 0
         hasBatchDimension = offset == 1
-        guard dims.count - offset == 2 else {
+        guard dims.count - offset == 2, strides.count == dims.count else {
             throw PoseError.unsupportedModel("shape \(dims)")
         }
-        if dims[offset] == 26 || dims[offset] == 27 {
+        let valid = Set([5 + 3 * keypointCount, 6 + 3 * keypointCount])
+        if valid.contains(dims[offset]) {
             channelsFirst = true
             channels = dims[offset]
             candidates = dims[offset + 1]
             channelStride = strides[offset]
             candidateStride = strides[offset + 1]
-        } else if dims[offset + 1] == 26 || dims[offset + 1] == 27 {
+        } else if valid.contains(dims[offset + 1]) {
             channelsFirst = false
             channels = dims[offset + 1]
             candidates = dims[offset]
@@ -133,7 +136,9 @@ private struct PoseTensor {
     }
 
     @inline(__always) func value(_ channel: Int, _ candidate: Int) -> Float {
+        guard channel >= 0, channel < channels, candidate >= 0, candidate < candidates else { return 0 }
         let offset = channel * channelStride + candidate * candidateStride
+        guard offset >= 0 else { return 0 }
         switch array.dataType {
         case .float16:
             let bits = array.dataPointer.assumingMemoryBound(to: UInt16.self)[offset]

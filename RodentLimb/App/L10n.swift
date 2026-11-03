@@ -37,7 +37,37 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 enum Lang {
+    // `L(...)` is called for every visible string, thousands of times per screen update (event
+    // lists, charts). Reading UserDefaults and Locale.preferredLanguages each time showed up as
+    // main-thread time while scrolling, so the answer is cached and recomputed only after a
+    // defaults change (which includes the in-app language picker).
+    private static let lock = NSLock()
+    private static var cached: Bool?
+    private static var generation = 0
+    private static let observer: NSObjectProtocol = NotificationCenter.default.addObserver(
+        forName: UserDefaults.didChangeNotification, object: nil, queue: nil) { _ in Lang.invalidate() }
+
+    static func invalidate() {
+        lock.lock()
+        cached = nil
+        generation += 1
+        lock.unlock()
+    }
+
     static var isChinese: Bool {
+        _ = observer
+        lock.lock()
+        if let c = cached { lock.unlock(); return c }
+        let gen = generation
+        lock.unlock()
+        let value = compute()
+        lock.lock()
+        if gen == generation { cached = value }
+        lock.unlock()
+        return value
+    }
+
+    private static func compute() -> Bool {
         switch AppLanguage.current {
         case .zh: return true
         case .en: return false

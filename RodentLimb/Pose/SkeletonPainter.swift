@@ -5,20 +5,38 @@ import CoreGraphics
 
 // Draws onto a fresh BGRA pixel buffer, leaving the AVAssetReader source untouched.
 enum SkeletonPainter {
+    /// `pool` is the asset writer adaptor's pool: recycling its buffers avoids allocating a new
+    /// full-size frame for every video frame (Apple: "for maximum efficiency" use the pool).
     static func render(source: CVPixelBuffer, pose: DecodedPose?,
-                       keypointThreshold: Double) throws -> CVPixelBuffer {
+                       keypointThreshold: Double, pool: CVPixelBufferPool? = nil) throws -> CVPixelBuffer {
         let width = CVPixelBufferGetWidth(source)
         let height = CVPixelBufferGetHeight(source)
         var result: CVPixelBuffer?
-        let attributes: [CFString: Any] = [
-            kCVPixelBufferCGImageCompatibilityKey: true,
-            kCVPixelBufferCGBitmapContextCompatibilityKey: true,
-            kCVPixelBufferIOSurfacePropertiesKey: [:] as [String: Any]
-        ]
-        let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height,
-                                         kCVPixelFormatType_32BGRA, attributes as CFDictionary, &result)
-        guard status == kCVReturnSuccess, let target = result else {
-            throw PoseError.writerFailed("pixel buffer \(status)")
+        if let pool {
+            var pooled: CVPixelBuffer?
+            // A pool buffer of another size or format cannot be filled row by row below.
+            if CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pooled) == kCVReturnSuccess,
+               let p = pooled,
+               CVPixelBufferGetWidth(p) == width, CVPixelBufferGetHeight(p) == height,
+               CVPixelBufferGetPixelFormatType(p) == kCVPixelFormatType_32BGRA {
+                result = p
+            }
+        }
+        if result == nil {
+            let attributes: [CFString: Any] = [
+                kCVPixelBufferCGImageCompatibilityKey: true,
+                kCVPixelBufferCGBitmapContextCompatibilityKey: true,
+                kCVPixelBufferIOSurfacePropertiesKey: [:] as [String: Any]
+            ]
+            let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height,
+                                             kCVPixelFormatType_32BGRA, attributes as CFDictionary, &result)
+            guard status == kCVReturnSuccess else { throw PoseError.writerFailed("pixel buffer \(status)") }
+        }
+        guard let target = result else { throw PoseError.writerFailed("pixel buffer") }
+        // The source must be BGRA (the reader is configured for it); anything else would be
+        // copied with the wrong row length.
+        guard CVPixelBufferGetPixelFormatType(source) == kCVPixelFormatType_32BGRA else {
+            throw PoseError.writerFailed("source pixel format")
         }
 
         CVPixelBufferLockBaseAddress(source, .readOnly)

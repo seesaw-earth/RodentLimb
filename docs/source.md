@@ -8,13 +8,13 @@ RodentLimb is open source under the **[GNU AGPL-3.0](https://github.com/seesaw-e
 
 The iPhone and Mac apps share one analysis layer, so a video gives the same keypoints and the same measures on both.
 
-| Part | What it does |
-|---|---|
-| **Shared analysis** | Keypoint cleaning, the seven analyzers, QC, study design, export and the methods text. Foundation only, so it also compiles and is tested on the command line |
-| **iPhone app** | Recording and importing on the phone, Core ML tracking, the iPhone interface |
-| **Mac app** | Library, batch engine with checkpoints, Core ML + Vision tracking, the Mac interface |
-| **Pose models** | Not in the repository (see [Pose models](./models/)); installed into the project with `install_model.py` |
-| **This manual** | VitePress site in `docs/`, published with GitHub Pages |
+| Part | Folder | What it does |
+|---|---|---|
+| **Shared analysis** | `Mac/Shared/` (the same files are in `RodentLimb/`) | Keypoint cleaning, the seven analyzers, QC, study design, export and the methods text. Foundation only, so it also compiles and is tested on the command line |
+| **iPhone app** | `RodentLimb/`, `RodentLimb.xcodeproj` | Importing on the phone, Core ML tracking, the iPhone and iPad interface |
+| **Mac app** | `Mac/macOS/` | Library, batch engine with checkpoints, Core ML + Vision tracking, the Mac interface |
+| **Pose models** | not in the repository | See [Pose models](./models/); installed into each project with `install_model.py` |
+| **This website** | `docs/` | VitePress manual; the home pages are `docs/public/index.html` and `docs/public/zh/index.html` |
 
 ## Where things are in the code
 
@@ -36,24 +36,34 @@ The iPhone and Mac apps share one analysis layer, so a video gives the same keyp
 | English and Chinese text | — | `L("English", "中文")` calls in every view; `L10n.swift` |
 
 ::: info Version in the repository
-The repository is being updated to the 1.3.5 source of both apps. Until that is complete, it may hold an earlier version; the release notes of each version are in the [changelog](./reference/changelog.md).
+The repository holds the 1.4.2 source of both apps. The release notes of each version are in the [changelog](./reference/changelog.md).
 :::
 
 ## Build from source
 
-You need **Xcode 16 or later**. There are no third-party Swift packages.
+You need **Xcode 26 or later**. There are no third-party Swift packages.
 
-- **Mac**: macOS 14 or later. Open the Mac project, choose your signing team and run. The project uses synchronized folders, so new files are picked up automatically.
-- **iPhone**: an iPhone or iPad with iOS 17 or later.
+- **Mac**: macOS 14 or later. Open `Mac/macOS/RodentLimb.xcodeproj`, choose your signing team and run. The project uses synchronized folders, so new files are picked up automatically.
+- **iPhone**: an iPhone or iPad with iOS 17 or later. Open `RodentLimb.xcodeproj` at the top of the repository.
 
 The model weights are not in the repository. Install them into the project before building, for example:
 
 ```bash
-python3 tools/install_model.py --fp16 /path/to/CylinderPose7_FP16_640.mlpackage.zip   # visible light
-python3 tools/install_model.py --nir  /path/to/PalmReaderPose8_640_W8A16.mlpackage.zip # near-infrared
+# iPhone and iPad
+python3 Tools/install_model.py --fp16 CylinderPose7_FP16_640.mlpackage.zip --nir PalmReaderPose8_640_W8A16.mlpackage.zip
+# Mac
+python3 Mac/tools/install_model.py --fp16 CylinderPose7_FP16_640.mlpackage.zip --nir PalmReaderPose8_640_W8A16.mlpackage.zip
 ```
 
 Where the weights come from and how they were trained is on the [model pages](./models/).
+
+## Tests
+
+```bash
+sh Tools/core_tests/run_core_tests.sh      # iPhone analysis layer
+sh Mac/tools/run_core_tests.sh             # Mac analysis layer and library
+sh Mac/tools/verify_shared.sh RodentLimb   # the shared files are identical in both apps
+```
 
 ## Build this manual
 

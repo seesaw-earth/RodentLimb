@@ -1,1 +1,2 @@
 "CFBundleDisplayName" = "RodentLimb";
+"NSPhotoLibraryAddUsageDescription" = "仅在您选择“存储视频”时，RodentLimb 才会把导出的骨架视频存入照片图库。";

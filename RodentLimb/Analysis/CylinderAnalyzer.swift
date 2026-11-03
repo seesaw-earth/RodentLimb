@@ -23,8 +23,10 @@ enum CylinderAnalyzer {
         let leftKp: Kp = p.swapLR ? .rf : .lf
         let rightKp: Kp = p.swapLR ? .lf : .rf
 
-        let circle = calibration.circle
-        let floor = calibration.floorY
+        // A degenerate rim (radius 0, NaN centre) would put every still paw "at the wall"; it is
+        // treated like a missing calibration.
+        let circle: CircleCal? = calibration.circle.flatMap { c in c.r > 0 && c.r.isFinite && c.cx.isFinite && c.cy.isFinite ? c : nil }
+        let floor: Double? = calibration.floorY.flatMap { $0.isFinite ? $0 : nil }
         let calibrated = p.view == .bottom ? circle != nil : floor != nil
         if !calibrated {
             notes.append(Note(.error,

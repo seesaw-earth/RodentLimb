@@ -2,6 +2,9 @@
 // family: system grouped surfaces, 20-pt cards, one blue accent for interactive elements,
 // Okabe–Ito colors for data. Left limbs are always blue and right limbs always orange, in video
 // overlays, charts and tables, so laterality reads at a glance (also for color-vision deficiency).
+//
+// 1.4: no decorative icons (TASK_FIRST_SPEC §4). Status is short coloured text or a small dot, a
+// paradigm is a text chip; glyphs remain only for playback controls, the tab bar and the "+" button.
 
 import SwiftUI
 import UIKit
@@ -33,7 +36,7 @@ enum Palette {
     static let right = adaptive(0xC42B3B, 0xFF7C88)
     static let both = adaptive(0x0B7480, 0x3CC3CD)
 
-    // Status — always paired with an icon and words.
+    // Status — always paired with words.
     static let success = adaptive(0x0A7A44, 0x3DD27F)
     static let warning = adaptive(0xA65700, 0xFFB547)
     static let danger = adaptive(0xD12E2E, 0xFF6E6E)
@@ -49,16 +52,40 @@ enum Palette {
         case .tailSuspension: return adaptive(0x7C4DDB, 0xB593FF)
         case .cylinder: return adaptive(0x0B7480, 0x3CC3CD)
         case .gait: return adaptive(0xAB4F08, 0xF2A04E)
+        case .itch: return adaptive(0xB0306A, 0xFF79B0)
+        case .pain: return adaptive(0xC62828, 0xFF7A7A)
+        case .grooming: return adaptive(0x2E7D32, 0x66BB6A)
+        case .seizure: return adaptive(0x3949AB, 0x8C9EFF)
         }
     }
 
-    /// Deep fill for badges carrying white symbols.
+    /// Color of a behavior event class (hex from the analyzer). Very dark classes get a light
+    /// variant in Dark Mode so they stay visible on cards.
+    static func event(_ hex: UInt32) -> Color {
+        let r = Double((hex >> 16) & 0xFF), g = Double((hex >> 8) & 0xFF), b = Double(hex & 0xFF)
+        let luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+        return luma < 0.2 ? adaptive(hex, 0xE0E0E0) : Color(uiColor: UIColor(hex: hex))
+    }
+
+    /// Deep fill of a paradigm (primary buttons in its screens).
     static func assayFill(_ a: Assay) -> Color {
         switch a {
         case .tailSuspension: return Color(uiColor: UIColor(hex: 0x7C4DDB))
         case .cylinder: return Color(uiColor: UIColor(hex: 0x0B7480))
         case .gait: return Color(uiColor: UIColor(hex: 0xAB4F08))
+        case .itch: return Color(uiColor: UIColor(hex: 0xB0306A))
+        case .pain: return Color(uiColor: UIColor(hex: 0xC62828))
+        case .grooming: return Color(uiColor: UIColor(hex: 0x2E7D32))
+        case .seizure: return Color(uiColor: UIColor(hex: 0x3949AB))
         }
+    }
+
+    /// Group colours in design order (Okabe–Ito, Wong 2011): blue, orange, bluish green, reddish
+    /// purple, sky blue, vermillion, yellow, black (white in Dark Mode).
+    static let groupHex: [UInt32] = [0x0072B2, 0xE69F00, 0x009E73, 0xCC79A7, 0x56B4E9, 0xD55E00, 0xF0E442, 0x000000]
+    static func group(_ i: Int) -> Color {
+        let hex = groupHex[((i % groupHex.count) + groupHex.count) % groupHex.count]
+        return hex == 0x000000 ? adaptive(0x000000, 0xFFFFFF) : Color(uiColor: UIColor(hex: hex))
     }
 
     static func label(_ l: PawLabel) -> Color {
@@ -137,19 +164,11 @@ struct Card<Content: View>: View {
 
 struct CardHeader<Trailing: View>: View {
     let title: String
-    var symbol: String?
     var subtitle: String?
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if let symbol {
-                Image(systemName: symbol)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(minWidth: 20)
-                    .accessibilityHidden(true)
-            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.headline).accessibilityAddTraits(.isHeader)
                 if let subtitle {
@@ -163,48 +182,26 @@ struct CardHeader<Trailing: View>: View {
 }
 
 extension CardHeader where Trailing == EmptyView {
-    init(_ title: String, symbol: String? = nil, subtitle: String? = nil) {
-        self.title = title; self.symbol = symbol; self.subtitle = subtitle; self.trailing = EmptyView()
+    init(_ title: String, subtitle: String? = nil) {
+        self.title = title; self.subtitle = subtitle; self.trailing = EmptyView()
     }
 }
 
+/// A paradigm as text on a tinted chip ("Gait analysis"; `short` = the code, e.g. GAIT).
 @MainActor
-struct SectionTitle: View {
-    let title: String
-    var actionTitle: String?
-    var action: (() -> Void)?
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.title3.weight(.semibold)).accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            if let actionTitle, let action {
-                Button(actionTitle, action: action).font(.subheadline.weight(.medium)).frame(minHeight: 44)
-            }
-        }
-    }
-}
-
-@MainActor
-struct IconBadge: View {
-    let symbol: String
-    let color: Color
-    var size: CGFloat = 40
-    var body: some View {
-        RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
-            .fill(color)
-            .frame(width: size, height: size)
-            .overlay {
-                Image(systemName: symbol).font(.system(size: size * 0.44, weight: .semibold)).foregroundStyle(.white)
-            }
-            .accessibilityHidden(true)
-    }
-}
-
-@MainActor
-struct AssayBadge: View {
+struct AssayChip: View {
     let assay: Assay
-    var size: CGFloat = 40
-    var body: some View { IconBadge(symbol: assay.symbol, color: Palette.assayFill(assay), size: size) }
+    var short = false
+    var body: some View {
+        Text(short ? assay.code : assay.name.text)
+            .font(.caption.weight(.semibold))
+            .lineLimit(1)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(Palette.assay(assay))
+            .background(Palette.assay(assay).opacity(0.12), in: Capsule())
+            .accessibilityLabel(assay.name.text)
+    }
 }
 
 @MainActor
@@ -243,26 +240,22 @@ struct Banner: View {
     var level: NoteLevel = .info
 
     var body: some View {
-        Label {
-            Text(text).foregroundStyle(.primary).fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: Self.icon(level)).foregroundStyle(Self.color(level))
-        }
-        .font(.subheadline)
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Self.color(level).opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Self.color(level).opacity(0.25), lineWidth: 1) }
-        .accessibilityElement(children: .combine)
+        Text(text)
+            .foregroundStyle(.primary)
+            .fixedSize(horizontal: false, vertical: true)
+            .font(.subheadline)
+            .padding(.vertical, 12)
+            .padding(.leading, 14)
+            .padding(.trailing, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .leading) {
+                Capsule().fill(Self.color(level)).frame(width: 3).padding(.vertical, 10).padding(.leading, 5)
+                    .accessibilityHidden(true)
+            }
+            .background(Self.color(level).opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .accessibilityElement(children: .combine)
     }
 
-    static func icon(_ l: NoteLevel) -> String {
-        switch l {
-        case .info: return "info.circle.fill"
-        case .warning: return "exclamationmark.triangle.fill"
-        case .error: return "xmark.octagon.fill"
-        }
-    }
     static func color(_ l: NoteLevel) -> Color {
         switch l {
         case .info: return .accentColor
@@ -293,11 +286,10 @@ struct NoteList: View {
                     withAnimation(Motion.snappy) { expanded.toggle() }
                 } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: Banner.icon(top)).foregroundStyle(Banner.color(top))
+                        Circle().fill(Banner.color(top)).frame(width: 8, height: 8).accessibilityHidden(true)
                         Text(String(format: L("%d notes", "%d 条提示"), notes.count)).font(.subheadline.weight(.semibold)).foregroundStyle(.primary)
                         Spacer()
-                        Image(systemName: "chevron.down").font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
-                            .rotationEffect(.degrees(expanded ? 180 : 0))
+                        Text(expanded ? L("Show fewer", "收起") : L("Show all", "全部显示")).font(.footnote.weight(.semibold)).foregroundStyle(.tint)
                     }
                     .frame(minHeight: 28)
                     .contentShape(Rectangle())
@@ -305,7 +297,8 @@ struct NoteList: View {
                 .buttonStyle(.plain)
                 ForEach(expanded ? sorted : Array(sorted.prefix(1))) { n in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Image(systemName: Banner.icon(n.level)).font(.caption).foregroundStyle(Banner.color(n.level))
+                        Circle().fill(Banner.color(n.level)).frame(width: 6, height: 6).alignmentGuide(.firstTextBaseline) { $0[.bottom] - 1 }
+                            .accessibilityHidden(true)
                         Text(n.text.text).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -316,7 +309,6 @@ struct NoteList: View {
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Banner.color(top).opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Banner.color(top).opacity(0.25), lineWidth: 1) }
         }
     }
 }
@@ -413,16 +405,6 @@ struct SecondaryButtonStyle: ButtonStyle {
     }
 }
 
-/// Card-sized buttons scale slightly on press.
-struct PressableCardStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && !Motion.reduced ? 0.97 : 1)
-            .opacity(configuration.isPressed ? 0.9 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-    }
-}
-
 @MainActor
 struct ProgressRing: View {
     let fraction: Double
@@ -510,36 +492,6 @@ struct NumberField: View {
 
 // MARK: - Brand
 
-/// RodentLimb glyph: a body with four limbs ending in colored paws (left blue, right orange).
-@MainActor
-struct LimbGlyph: View {
-    var body: some View {
-        Canvas { ctx, size in
-            let s = min(size.width, size.height)
-            func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: (size.width - s) / 2 + x * s, y: (size.height - s) / 2 + y * s) }
-            let body = Path(ellipseIn: CGRect(x: p(0.34, 0.2).x, y: p(0.34, 0.2).y, width: s * 0.32, height: s * 0.56))
-            ctx.fill(body, with: .color(.white.opacity(0.22)))
-            let joints = [p(0.42, 0.34), p(0.58, 0.34), p(0.42, 0.66), p(0.58, 0.66)]
-            let paws = [p(0.2, 0.26), p(0.8, 0.26), p(0.22, 0.8), p(0.78, 0.8)]
-            let colors: [Kp] = [.lf, .rf, .lh, .rh]
-            for i in 0..<4 {
-                var path = Path()
-                path.move(to: joints[i]); path.addLine(to: paws[i])
-                ctx.stroke(path, with: .color(.white.opacity(0.9)), style: StrokeStyle(lineWidth: s * 0.045, lineCap: .round))
-            }
-            for i in 0..<4 {
-                let r = s * 0.075
-                let rect = CGRect(x: paws[i].x - r, y: paws[i].y - r, width: 2 * r, height: 2 * r)
-                ctx.fill(Path(ellipseIn: rect.insetBy(dx: -s * 0.018, dy: -s * 0.018)), with: .color(.white))
-                ctx.fill(Path(ellipseIn: rect), with: .color(KeypointColors.color(colors[i])))
-            }
-            let nose = p(0.5, 0.14)
-            ctx.fill(Path(ellipseIn: CGRect(x: nose.x - s * 0.05, y: nose.y - s * 0.05, width: s * 0.1, height: s * 0.1)), with: .color(KeypointColors.color(.nose)))
-        }
-        .accessibilityHidden(true)
-    }
-}
-
 @MainActor
 struct AppMark: View {
     var size: CGFloat = 52
@@ -581,13 +533,15 @@ private struct ToastModifier: ViewModifier {
         content
             .overlay(alignment: .bottom) {
                 if let shown {
-                    Label(shown, systemImage: "checkmark.circle.fill")
+                    Text(shown)
                         .font(.subheadline.weight(.semibold))
+                        .multilineTextAlignment(.center)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(.regularMaterial, in: Capsule())
                         .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
-                        .padding(.bottom, 12)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 60)
                         .transition(Motion.reduced ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                         .accessibilityHidden(true)
                 }
@@ -621,14 +575,7 @@ struct SharePayload: Identifiable {
     let items: [Any]
 }
 
-// MARK: - v1.1 components (simpler, friendlier layout)
-
-extension Palette {
-    /// The icon's sky-to-cobalt gradient, used once per screen at most (Home hero).
-    static let brandGradient = LinearGradient(
-        colors: [Color(uiColor: UIColor(hex: 0x7FE6F6)), Color(uiColor: UIColor(hex: 0x3D9BF7)), Color(uiColor: UIColor(hex: 0x1F5BEF))],
-        startPoint: .topLeading, endPoint: .bottomTrailing)
-}
+// MARK: - Bars and primary actions
 
 extension View {
     /// A bar pinned to the top or bottom edge. On iOS 26 it uses the system scroll-edge effect
@@ -760,25 +707,86 @@ struct MeasureList: View {
     }
 }
 
-/// Friendly empty state with the mascot.
-struct EmptyState: View {
-    let title: String
-    let message: String
-    var body: some View {
-        VStack(spacing: 10) {
-            AppMark(size: 72)
-            Text(title).font(.headline)
-            Text(message).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .padding(.horizontal, 20)
-    }
-}
-
 /// Closes the keyboard from anywhere (decimal pads have no return key).
 @MainActor
 func dismissKeyboard() {
     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+}
+
+/// A text field that saves on Return, when it loses focus and when the screen closes — never only
+/// when a Save button is pressed — so a typed value is not lost.
+@MainActor
+struct CommitTextField: View {
+    let title: String
+    let value: String
+    var axis: Axis = .horizontal
+    let commit: (String) -> Void
+    @State private var text = ""
+    @State private var loaded = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(title, text: $text, axis: axis)
+            .lineLimit(axis == .vertical ? 1...6 : 1...1)
+            .focused($focused)
+            .onAppear { if !loaded { text = value; loaded = true } }
+            .onSubmit(save)
+            .onChange(of: focused) { _, f in if !f { save() } }
+            .onChange(of: value) { _, v in if !focused { text = v } }
+            .onDisappear(perform: save)
+    }
+
+    private func save() {
+        guard loaded, text != value else { return }
+        commit(text)
+    }
+}
+
+
+// MARK: - Wrapping row
+
+/// Items in a row that continue on the next line when the width runs out (counts, chips), so
+/// nothing is truncated or pushed off a narrow iPhone or by large text.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+    var lineSpacing: CGFloat = 6
+
+    private func rows(_ width: CGFloat, _ subviews: Subviews) -> [[(Int, CGSize)]] {
+        var out: [[(Int, CGSize)]] = [[]]
+        var x: CGFloat = 0
+        for (i, s) in subviews.enumerated() {
+            let size = s.sizeThatFits(.unspecified)
+            if x > 0 && x + size.width > width {
+                out.append([])
+                x = 0
+            }
+            out[out.count - 1].append((i, size))
+            x += size.width + spacing
+        }
+        return out
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .greatestFiniteMagnitude
+        var height: CGFloat = 0
+        var widest: CGFloat = 0
+        for (n, line) in rows(width, subviews).enumerated() {
+            height += (line.map(\.1.height).max() ?? 0) + (n > 0 ? lineSpacing : 0)
+            widest = max(widest, line.map(\.1.width).reduce(0, +) + spacing * CGFloat(max(0, line.count - 1)))
+        }
+        return CGSize(width: proposal.width ?? widest, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in rows(bounds.width, subviews) {
+            let h = line.map(\.1.height).max() ?? 0
+            var x = bounds.minX
+            for (i, size) in line {
+                subviews[i].place(at: CGPoint(x: x, y: y + (h - size.height) / 2), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += h + lineSpacing
+        }
+    }
 }

@@ -1,0 +1,5 @@
+/* Localized Info.plist values. Having an en.lproj and a zh-Hans.lproj folder also tells macOS which
+   languages RodentLimb supports, so the menus macOS provides (Edit, Window, Quit, open/save panels)
+   follow the in-app language choice. */
+"CFBundleDisplayName" = "RodentLimb";
+"CFBundleName" = "RodentLimb";

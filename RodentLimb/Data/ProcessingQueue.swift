@@ -1,8 +1,13 @@
-// ProcessingQueue.swift — runs pose inference for queued sessions one at a time.
+// ProcessingQueue.swift — runs pose inference for queued recordings (videos) one at a time.
+// Every added video goes through its pose model once (the model chosen when it was added, kept in
+// its sidecar); QC follows (SessionStore.finishProcessing). `currentID` is the id of the recording
+// being processed.
 //
-// Videos are processed sequentially (one model in memory). The screen is kept awake while
-// running. If the app goes to the background, the current video is stopped and put back at the
-// front of the queue; it restarts automatically when the app is active again.
+// Videos are processed sequentially; each model is loaded once and reused. The screen is kept awake while
+// running. As soon as the app stops being active (Control Center, a call, the app switcher) the
+// video is paused, so no GPU work is submitted while iOS forbids it; when the app is active again
+// it continues from the frame where it stopped. Only with "render skeleton video" on is the video
+// restarted, because AVAssetWriter cannot resume after the app was in the background.
 
 import Foundation
 import SwiftUI
@@ -32,6 +37,10 @@ final class ProcessingQueue: ObservableObject {
     private var interruptedByBackground = false
     private var cancelledByUser = false
     private var isActive = true
+    /// The scene is active (not merely visible behind Control Center, a call, the app switcher).
+    private var isForeground = true
+    /// The running video writes a skeleton MP4 (cannot be resumed after the background).
+    private var runningWithSkeleton = false
 
     var renderSkeleton: () -> InferenceSettings = { InferenceSettings() }
 
@@ -40,10 +49,10 @@ final class ProcessingQueue: ObservableObject {
         self.engine = engine
     }
 
-    var queuedCount: Int { store.sessions.filter { $0.status == .queued }.count }
+    var queuedCount: Int { store.recordings.filter { $0.status == .queued }.count }
 
     func kick() {
-        guard worker == nil, isActive else { return }
+        guard worker == nil, isActive, store.isLoaded else { return }
         worker = Task { [weak self] in
             await self?.drain()
             self?.worker = nil
@@ -59,79 +68,96 @@ final class ProcessingQueue: ObservableObject {
         switch phase {
         case .active:
             isActive = true
+            isForeground = true
             pausedForBackground = false
+            control?.resume()
             kick()
+        case .inactive:
+            // Stop submitting frames right away; nothing is lost, the loop just waits.
+            isForeground = false
+            control?.pause()
         case .background:
             isActive = false
-            if currentID != nil {
+            isForeground = false
+            guard currentID != nil, let control else { break }
+            control.pause()
+            pausedForBackground = true
+            if runningWithSkeleton {
                 interruptedByBackground = true
-                pausedForBackground = true
-                control?.cancel()
+                control.cancel()
+            } else {
+                control.noteInterruption()
             }
         default:
             break
         }
     }
 
-    private func nextQueued() -> Session? {
-        // Oldest first, so batches finish in import order.
-        store.sessions.filter { $0.status == .queued }.min { $0.createdAt < $1.createdAt }
-    }
+    private func nextQueued() -> Recording? { store.nextQueuedRecording() }
 
     private func drain() async {
-        while isActive, let s = nextQueued() {
-            guard let loaded = await engine.load() else {
-                // Model missing or failed: leave sessions queued; Home shows the model banner.
-                return
+        while isActive, let first = nextQueued() {
+            // The video's own model (CylinderPose7 FP16 for videos tracked before 1.4).
+            let modelID = store.poseModel(first.id).runnable
+            guard let loaded = await engine.load(modelID) else {
+                // This model cannot be loaded: say why on the video and go on with the others.
+                let message = engine.failure(modelID) ?? PoseError.missingModel(modelID).localizedDescription
+                store.updateRecording(first.id) { $0.status = .failed; $0.failure = message }
+                continue
             }
+            // Start a video only while the app is active (no GPU work in the background). If the
+            // app went to the background meanwhile, `kick()` restarts the queue when it is back.
+            while isActive && !isForeground { try? await Task.sleep(nanoseconds: 200_000_000) }
+            guard isActive, let r = nextQueued() else { return }
+            // Another video came first meanwhile (re-queued): load its model on the next turn.
+            guard store.poseModel(r.id).runnable == modelID else { continue }
             let (model, info) = loaded
-            let id = s.id
+            let id = r.id
             currentID = id
             progress.fraction = 0
             progress.framesPerSecond = 0
             progress.secondsLeft = nil
             lastReport = .distantPast
+            rateAnchor = nil
+            smoothedFPS = 0
             interruptedByBackground = false
             cancelledByUser = false
-            store.update(id) { $0.status = .processing; $0.failure = nil }
+            store.updateRecording(id) { $0.status = .processing; $0.failure = nil }
             UIApplication.shared.isIdleTimerDisabled = true
 
             let control = ProcessingControl()
             self.control = control
             let settings = renderSkeleton()
-            let videoURL = store.videoURL(s)
+            let videoURL = store.videoURL(r)
             let skeletonURL = settings.renderSkeletonVideo ? store.skeletonURL(id) : nil
+            runningWithSkeleton = skeletonURL != nil
             let started = Date()
             do {
                 let track = try await Task.detached(priority: .userInitiated) {
-                    try await PoseVideoProcessor.run(videoURL: videoURL, model: model, info: info, settings: settings,
+                    try await PoseVideoProcessor.run(videoURL: videoURL, model: model, info: info, modelID: modelID, settings: settings,
                                                      skeletonURL: skeletonURL, control: control) { p in
                         Task { @MainActor [weak self] in self?.report(p, started: started) }
                     }
                 }.value
-                try store.storePose(track, for: id)
-                store.update(id) {
-                    $0.hasPose = true
-                    $0.hasSkeletonVideo = skeletonURL != nil
-                    $0.videoWidth = track.width
-                    $0.videoHeight = track.height
-                    $0.fps = track.fps
-                    $0.duration = track.duration
-                    $0.modelVersion = track.modelVersion
-                    $0.status = $0.isCalibrated ? .done : .needsSetup
-                }
-                store.analyze(id)
+                // Saves the pose, computes QC, includes / assigns planned tasks, re-analyses tasks.
+                try await store.finishProcessing(id, track: track, skeleton: skeletonURL != nil)
             } catch {
-                if interruptedByBackground {
-                    store.update(id) { $0.status = .queued }
+                if store.recording(id) == nil {
+                    // Deleted while it was being processed: nothing to report.
+                } else if interruptedByBackground || (error as? PoseError)?.isInterruption == true
+                            || (!cancelledByUser && control.interruptionCount > 0 && !(error is CancellationError)) {
+                    // The app was in the background during this video: whatever failed is most
+                    // likely the interruption, so try the video again instead of reporting it.
+                    store.updateRecording(id) { $0.status = .queued }
                 } else if cancelledByUser || error is CancellationError {
-                    store.update(id) { $0.status = .failed; $0.failure = L("Cancelled", "已取消") }
+                    store.updateRecording(id) { $0.status = .failed; $0.failure = L("Cancelled", "已取消") }
                 } else {
-                    store.update(id) { $0.status = .failed; $0.failure = error.localizedDescription }
+                    store.updateRecording(id) { $0.status = .failed; $0.failure = error.localizedDescription }
                 }
             }
             self.control = nil
             currentID = nil
+            runningWithSkeleton = false
             UIApplication.shared.isIdleTimerDisabled = false
         }
     }
@@ -142,18 +168,32 @@ final class ProcessingQueue: ObservableObject {
         // At most 4 updates per second (the last report of a video always goes through).
         guard p.done >= p.total || now.timeIntervalSince(lastReport) >= 0.25 else { return }
         lastReport = now
-        progress.fraction = Double(p.done) / Double(max(1, p.total))
-        let elapsed = now.timeIntervalSince(started)
-        if elapsed > 1, p.done > 0 {
-            let fps = Double(p.done) / elapsed
-            progress.framesPerSecond = fps
-            progress.secondsLeft = Double(max(0, p.total - p.done)) / max(0.1, fps)
+        progress.fraction = min(1, Double(p.done) / Double(max(1, p.total)))
+        // Speed from recent progress only (smoothed), so time spent paused in the background
+        // does not distort the estimate.
+        if let anchor = rateAnchor, p.done >= anchor.done {
+            let dt = now.timeIntervalSince(anchor.time)
+            if dt > 4 {
+                rateAnchor = (now, p.done)            // paused meanwhile: restart the measurement
+            } else if dt >= 1 {
+                let fps = Double(p.done - anchor.done) / dt
+                smoothedFPS = smoothedFPS > 0 ? 0.7 * smoothedFPS + 0.3 * fps : fps
+                rateAnchor = (now, p.done)
+                progress.framesPerSecond = smoothedFPS
+                progress.secondsLeft = smoothedFPS > 0.1 ? Double(max(0, p.total - p.done)) / smoothedFPS : nil
+            }
+        } else {
+            rateAnchor = (now, p.done)
         }
     }
 
-    /// Re-queues a failed session.
-    func retry(_ id: UUID) {
-        store.update(id) { $0.status = .queued; $0.failure = nil }
+    private var rateAnchor: (time: Date, done: Int)?
+    private var smoothedFPS = 0.0
+
+    /// Re-queues a recording (failed, or tracking to be re-run), optionally with another model.
+    func retry(recording id: UUID, model: PoseModelID? = nil) {
+        if currentID == id { return }
+        store.rerunDetection(id, model: model)
         kick()
     }
 }

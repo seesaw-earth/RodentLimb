@@ -2,6 +2,22 @@
 
 ## RodentLimb for Mac
 
+### 1.4.2
+
+- **Stability.** Fixed a crash in which the window was laid out again and again ("Update Constraints in Window passes") and freezes while videos were tracked or played: pages no longer pass their minimum size on to the window, progress updates no longer resort the whole library, and players are released as soon as a page closes.
+- Ready for the App Store: the build removes extended attributes from the app before signing, and a pre-flight script checks the project and the archive.
+
+### 1.4.1
+
+- Layout fits every Mac screen: the window can be smaller (860 × 560), sheets never run past the bottom of the screen and keep their buttons visible, and pages stack their columns on a narrow window.
+
+### 1.4.0
+
+- **Task first.** Create a task (choose the paradigm, name its groups), then add its videos. The sidebar shows tasks and their groups; each video becomes a session of its task at once.
+- Groups are read from file and folder names when videos are added; moving videos between tasks, removing them and deleting a task can be undone.
+- Group comparison as a dot plot (one point per animal, mean ± SEM, n per group) in colour-blind-safe colours.
+- The 38 MB CylinderMousePoseV2 package is no longer included; CylinderPose7 (the same network in half precision) replaces it.
+
 ### 1.3.5
 
 - **Two pose models.** *Visible light* — [CylinderPose7](../models/cylinderpose7.md) (FP16, 19 MB) — is the default for new imports; *Near-infrared, dark box* — [PalmReaderPose8](../models/palmreader8.md) — is the second choice. The full-precision CylinderMousePoseV2 package is no longer bundled, which makes the app much smaller.
@@ -39,6 +55,20 @@ First Mac version. The analysis code is the same as the iPhone app's.
 - Not on the Mac: recording video, and rendering a skeleton video.
 
 ## RodentLimb for iPhone
+
+### 1.4.2
+
+- Players are released as soon as a session closes; saving an exported skeleton video to Photos works (the app now states why it asks).
+
+### 1.4.1
+
+- Rows of controls wrap on narrow screens and with large text; playback and label buttons have 44-point touch targets.
+
+### 1.4.0
+
+- **Task first**, as on the Mac: create a task (paradigm, name, groups, timepoints), then add its videos. Tabs Tasks · Processing · Settings; the task screen has Sessions, Results and Design.
+- Choose per batch between CylinderPose7 (room light, default) and PalmReaderPose8 (near-infrared dark box); the 38 MB CylinderMousePoseV2 is no longer included.
+- Recently Deleted (30 days, Undo right after a delete) and metadata backups; group comparison with every animal as a dot and the group mean ± SEM.
 
 ### 1.1.2
 

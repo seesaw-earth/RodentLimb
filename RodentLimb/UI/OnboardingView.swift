@@ -1,6 +1,5 @@
-// OnboardingView.swift — three short pages shown on first launch (and from Settings).
-// Kept to what a new user needs before importing a video: what the app does, how to film,
-// and that data never leaves the phone.
+// OnboardingView.swift — four short text pages shown on first launch (and from Settings): what the
+// app does, the task-first flow, how to film, and that nothing is lost.
 
 import SwiftUI
 
@@ -10,25 +9,24 @@ struct OnboardingView: View {
     @State private var page = 0
 
     private struct Page {
-        let symbol: String?
         let title: String
         let text: String
     }
 
     private var pages: [Page] {
         [
-            Page(symbol: nil,
-                 title: L("Welcome to RodentLimb", "欢迎使用 RodentLimb"),
-                 text: L("Tracks the four paws, nose and tail base in your videos, then scores tail suspension, cylinder and gait tests on your iPhone.",
-                         "识别视频中小鼠的四只爪、鼻尖和尾根，在 iPhone 上完成悬尾、圆筒和步态实验的分析。")),
-            Page(symbol: "video.badge.checkmark",
-                 title: L("Film for good tracking", "拍摄要点"),
-                 text: L("One mouse per video, fixed camera, even light. Cylinder and gait: film from below through a clear floor. Gait: 60 fps or more.",
-                         "每段视频一只小鼠，相机固定，光线均匀。圆筒和步态：透过透明底面从下方拍摄。步态：60 fps 以上。")),
-            Page(symbol: "lock.shield",
-                 title: L("Private by design", "数据只在本机"),
-                 text: L("Videos and results stay on this device. Change any parameter later — results update instantly without re-running the model.",
-                         "视频和结果只保存在本机。之后可随时调整参数，结果即时更新，无需重新运行模型。")),
+            Page(title: L("Welcome to RodentLimb", "欢迎使用 RodentLimb"),
+                 text: L("Tracks the four paws, nose and tail base in your videos and scores gait, cylinder and tail suspension tests, itch, spontaneous pain, grooming and seizures, on this device.",
+                         "识别视频中小鼠的四只爪、鼻尖和尾根，在本机完成步态、圆筒和悬尾实验，以及瘙痒、自发痛、理毛和癫痫发作的评分。")),
+            Page(title: L("Task first, then videos", "先建任务，再添加视频"),
+                 text: L("Create a task: choose the paradigm and the groups. Add its videos: each one is tracked once, checked for quality, and the groups are compared as soon as results arrive.",
+                         "新建任务：选择范式和分组。添加该任务的视频：每段视频只识别一次并检查质量，结果出来后立即按组比较。")),
+            Page(title: L("Film for good tracking", "拍摄要点"),
+                 text: L("One mouse per video, fixed camera, even light. Film from below through a clear floor. Gait, scratching and flinching: 60 fps or more. For dark boxes filmed in near-infrared, choose the near-infrared model when adding the videos.",
+                         "每段视频一只小鼠，相机固定，光线均匀，透过透明底面从下方拍摄。步态、抓挠和甩爪：60 fps 以上。暗箱中用近红外拍摄的视频，添加时请选择近红外模型。")),
+            Page(title: L("Nothing is lost", "数据不会丢失"),
+                 text: L("Everything stays on this device and is saved as you work. Deleted items can be restored for 30 days, and the design and decisions are backed up every day.",
+                         "所有数据只保存在本机，并在操作时随时保存。删除的内容 30 天内可以恢复，设计和决定每天自动备份。")),
         ]
     }
 
@@ -69,18 +67,13 @@ struct OnboardingView: View {
     private func pageView(_ p: Page) -> some View {
         VStack(spacing: 22) {
             Spacer(minLength: 20)
-            if let symbol = p.symbol {
-                Image(systemName: symbol)
-                    .font(.system(size: 64, weight: .medium))
-                    .foregroundStyle(Palette.brandGradient)
-                    .frame(height: 150)
-            } else {
-                AppMark(size: 150)
-                    .shadow(color: Color.accentColor.opacity(0.25), radius: 20, y: 10)
+            if p.title == pages.first?.title {
+                AppMark(size: 120)
             }
             Text(p.title)
                 .font(.title.weight(.bold))
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
             Text(p.text)
                 .font(.body)
                 .foregroundStyle(.secondary)

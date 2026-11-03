@@ -15,3 +15,8 @@ The manual is built with VitePress (MIT License) and published with GitHub Pages
 ## Not legal advice
 
 This file lists the known third-party components and open questions. It is not legal clearance.
+
+## Website font
+
+The home pages use **Schibsted Grotesk** (Copyright 2023 The Schibsted-Grotesk Project Authors),
+licensed under the SIL Open Font License 1.1: `docs/public/home/fonts/OFL-SchibstedGrotesk.txt`.

@@ -27,7 +27,7 @@ enum GaitAnalyzer {
         var notes: [Note] = []
         let bl = s.bodyLength
         let n = s.n
-        let pxPerCm = calibration.scale?.pxPerCm
+        let pxPerCm: Double? = calibration.scale?.pxPerCm.flatMap { $0.isFinite ? $0 : nil }
         let unit = pxPerCm != nil ? "cm" : "BL"
         let toUnit: (Double) -> Double = { px in pxPerCm.map { px / $0 } ?? px / bl }
         if pxPerCm == nil {
@@ -226,7 +226,11 @@ enum GaitAnalyzer {
         // MARK: Interlimb phases
         let lhStrides = strides.filter { $0.paw == .lh }
         let lfStrides = strides.filter { $0.paw == .lf }
-        func strikes(_ k: Kp) -> [Double] { (stances[k] ?? []).map { $0.interval.start } }
+        // Built once: `phase` runs for every stride, and rebuilding the list each time was
+        // O(strides × stances) allocation on long videos.
+        var strikeTimes: [Kp: [Double]] = [:]
+        for k in Kp.paws { strikeTimes[k] = (stances[k] ?? []).map { $0.interval.start } }
+        func strikes(_ k: Kp) -> [Double] { strikeTimes[k] ?? [] }
         func phase(in st: GaitStride, of target: Kp) -> Double? {
             guard let t = strikes(target).first(where: { $0 >= st.start && $0 < st.end }) else { return nil }
             return (t - st.start) / (st.end - st.start)

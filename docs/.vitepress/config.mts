@@ -166,7 +166,7 @@ export default defineConfig({
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: `${base}favicon-64.png` }],
     ['link', { rel: 'apple-touch-icon', href: `${base}apple-touch-icon.png` }],
-    ['meta', { name: 'theme-color', content: '#2f7bf5' }],
+    ['meta', { name: 'theme-color', content: '#1f7fe0' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'RodentLimb — limb pose and behavior scoring for mouse videos' }],
     ['meta', { property: 'og:image', content: `https://seesaw-earth.github.io${base}hero.png` }]
@@ -204,6 +204,9 @@ export default defineConfig({
       title: 'RodentLimb',
       description: 'Limb pose and behavior scoring of mouse videos on Mac, iPhone and iPad — user manual',
       themeConfig: {
+        // The home pages are standalone (docs/public/index.html, docs/public/zh/index.html), not
+        // VitePress pages: open them with a full page load.
+        logoLink: { link: base, target: '_self' },
         nav: [
           {
             text: 'Manual',
@@ -240,6 +243,7 @@ export default defineConfig({
       title: 'RodentLimb',
       description: '在 Mac、iPhone 和 iPad 上完成小鼠肢体姿态识别与行为评分 —— 使用手册',
       themeConfig: {
+        logoLink: { link: `${base}zh/`, target: '_self' },
         nav: [
           {
             text: '手册',

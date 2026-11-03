@@ -1,7 +1,9 @@
 // PoseSeries.swift — cleaned keypoint trajectories shared by all analyzers.
 //
-// Pipeline per keypoint: confidence filter → linear interpolation of short gaps (≤ maxGap) →
-// 3-point median (removes single-frame jumps) → centered moving average (NaN-aware).
+// Pipeline per keypoint: confidence filter → optional removal of implausible jumps (Hampel-style,
+// see GapRepair.rejectJumps) → filling of short gaps (≤ maxGap; linear by default, or cubic,
+// body-relative or Kalman, see GapRepair) → 3-point median (removes single-frame jumps) →
+// centered moving average (NaN-aware). Longer gaps stay missing.
 // Missing samples are NaN. Body length = median nose–tail-base distance, the scale every
 // threshold in the app is expressed in, so parameters transfer between cameras and zoom levels.
 
@@ -84,7 +86,7 @@ enum Signal {
     /// Central-difference derivative using real timestamps.
     static func derivative(_ v: [Double], t: [Double]) -> [Double] {
         let n = v.count
-        guard n > 1 else { return [Double](repeating: .nan, count: n) }
+        guard n > 1, t.count >= n else { return [Double](repeating: .nan, count: n) }
         var out = [Double](repeating: .nan, count: n)
         for i in 0..<n {
             let a = max(0, i - 1), b = min(n - 1, i + 1)
@@ -129,7 +131,7 @@ enum Signal {
     static func downsample(t: [Double], v: [Double], maxPoints: Int) -> [SeriesPoint] {
         let n = min(t.count, v.count)
         guard n > 0 else { return [] }
-        let step = max(1, Int(ceil(Double(n) / Double(maxPoints))))
+        let step = max(1, Int(safe: ceil(Double(n) / Double(maxPoints)), fallback: 1))
         var out: [SeriesPoint] = []
         out.reserveCapacity(n / step + 1)
         var i = 0
@@ -156,6 +158,19 @@ enum Signal {
     }
 }
 
+extension PoseTrack {
+    /// Frames for which `times` and every keypoint array have a value. Equals `frameCount` for
+    /// every track the app writes; smaller only for a damaged file (arrays of different lengths,
+    /// keypoint arrays missing), so the analysis never indexes past the end of one of them.
+    var safeFrameCount: Int {
+        let k = Kp.allCases.count
+        guard x.count >= k, y.count >= k, c.count >= k else { return 0 }
+        var m = times.count
+        for j in 0..<k { m = Swift.min(m, x[j].count, y[j].count, c[j].count) }
+        return m
+    }
+}
+
 struct PoseSeries {
     let n: Int
     let t: [Double]
@@ -167,19 +182,32 @@ struct PoseSeries {
     let visibility: [Double]
     let bodyLength: Double
     let bodyLengthEstimated: Bool
+    /// Keypoint confidence threshold used to build the series.
+    let keypointThreshold: Double
+    /// `t` is non-decreasing (no NaN), so frame lookups can bisect instead of scanning.
+    private let timesSorted: Bool
+    /// Samples removed as implausible jumps (0 unless `CommonParams.rejectJumps`).
+    let jumpsRemoved: Int
 
     init(track: PoseTrack, params: CommonParams) {
-        n = track.frameCount
-        t = track.times
-        let rawFps = track.fps > 1 ? track.fps : 30
+        // Equals track.frameCount for every track the app writes; smaller only for a damaged
+        // file whose arrays disagree in length, so the loops below never index out of range.
+        n = track.safeFrameCount
+        keypointThreshold = params.keypointThreshold
+        t = n == track.times.count ? track.times : Array(track.times.prefix(n))
+        var sorted = true
+        for i in 1..<max(1, n) where !(track.times[i] >= track.times[i - 1]) { sorted = false; break }
+        timesSorted = sorted
+        let rawFps = track.fps > 1 && track.fps.isFinite ? track.fps : 30
         var diffs: [Double] = []
         if n > 1 { for i in 1..<min(n, 600) { diffs.append(track.times[i] - track.times[i - 1]) } }
         let mdt = Signal.median(diffs.filter { $0 > 0 }) ?? (1 / rawFps)
         dt = mdt
         fps = 1 / mdt
-        let gap = Int((params.maxGap / mdt).rounded())
-        let win = Int((params.smoothing / mdt).rounded())
-        var xs: [[Double]] = [], ys: [[Double]] = [], vis: [Double] = []
+        let gap = Int(safe: (params.maxGap / mdt).rounded())
+        let win = Int(safe: (params.smoothing / mdt).rounded())
+        // 1. Confidence filter.
+        var rawX: [[Double]] = [], rawY: [[Double]] = [], vis: [Double] = []
         for k in Kp.allCases {
             var vx = [Double](repeating: .nan, count: n)
             var vy = [Double](repeating: .nan, count: n)
@@ -192,10 +220,27 @@ struct PoseSeries {
                 }
             }
             vis.append(n > 0 ? Double(seen) / Double(n) : 0)
-            vx = Signal.smooth(Signal.median3(Signal.fillGaps(vx, maxGap: gap)), window: win)
-            vy = Signal.smooth(Signal.median3(Signal.fillGaps(vy, maxGap: gap)), window: win)
-            xs.append(vx); ys.append(vy)
+            rawX.append(vx); rawY.append(vy)
         }
+        // 2. Optional: implausible jumps become gaps (threshold in body lengths of the raw track).
+        var jumps = 0
+        if params.rejectJumps, n > 4 {
+            var raw: [Double] = []
+            let no = Kp.nose.rawValue, tb = Kp.tail.rawValue
+            for i in 0..<n where rawX[no][i].isFinite && rawX[tb][i].isFinite {
+                raw.append(hypot(rawX[no][i] - rawX[tb][i], rawY[no][i] - rawY[tb][i]))
+            }
+            let rawBL = Signal.median(raw) ?? max(1, Double(min(track.width, track.height)) / 8)
+            let half = min(60, max(1, Int(safe: (0.1 / mdt).rounded())))   // ±0.1 s, capped for damaged timelines
+            for k in 0..<rawX.count {
+                jumps += GapRepair.rejectJumps(x: &rawX[k], y: &rawY[k], threshold: params.jumpThreshold * rawBL, half: half)
+            }
+        }
+        jumpsRemoved = jumps
+        // 3. Short gaps filled with the chosen method; 4. 3-point median; 5. moving average.
+        let (filledX, filledY) = GapRepair.fill(xs: rawX, ys: rawY, maxGap: gap, method: params.gapFill)
+        let xs = filledX.map { Signal.smooth(Signal.median3($0), window: win) }
+        let ys = filledY.map { Signal.smooth(Signal.median3($0), window: win) }
         x = xs; y = ys; visibility = vis
 
         var lengths: [Double] = []
@@ -208,13 +253,15 @@ struct PoseSeries {
             bodyLength = m
             bodyLengthEstimated = false
         } else {
-            // Fallback: 1/8 of the shorter frame side — flagged in the result notes.
-            bodyLength = Double(min(track.width, track.height)) / 8
+            // Fallback: 1/8 of the shorter frame side — flagged in the result notes. Never below
+            // 1 px: every analyzer divides by it.
+            bodyLength = max(1, Double(min(track.width, track.height)) / 8)
             bodyLengthEstimated = true
         }
     }
 
     func p(_ k: Kp, _ i: Int) -> P? {
+        guard i >= 0, i < n else { return nil }
         let vx = x[k.rawValue][i], vy = y[k.rawValue][i]
         return vx.isFinite && vy.isFinite ? P(x: vx, y: vy) : nil
     }
@@ -243,17 +290,36 @@ struct PoseSeries {
         return out
     }
 
-    func samples(_ seconds: Double) -> Int { max(1, Int((seconds / dt).rounded())) }
+    func samples(_ seconds: Double) -> Int { max(1, Int(safe: (seconds / dt).rounded())) }
+
+    /// First frame with t ≥ a (n if none). Same result as `t.firstIndex { $0 >= a } ?? n`; on a
+    /// sorted timeline it bisects (O(log n)), which matters when it is called once per stride or
+    /// event on long videos.
+    private func firstFrame(atOrAfter a: Double) -> Int {
+        guard timesSorted else { return t.firstIndex { $0 >= a } ?? n }
+        var lo = 0, hi = t.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if t[mid] >= a { hi = mid } else { lo = mid + 1 }
+        }
+        return lo
+    }
 
     /// Frame range covering [a, b) seconds.
     func indices(from a: Double, to b: Double) -> Range<Int> {
-        let lo = t.firstIndex { $0 >= a } ?? n
-        let hi = t.firstIndex { $0 >= b } ?? n
+        let lo = firstFrame(atOrAfter: a)
+        let hi = firstFrame(atOrAfter: b)
         return lo..<max(lo, hi)
     }
 
     /// Converts a run of frames to a time interval (end = start of the following frame).
     func interval(_ r: Range<Int>) -> Interval {
-        Interval(start: t[r.lowerBound], end: t[r.upperBound - 1] + dt)
+        let lo = max(0, r.lowerBound), hi = min(n, r.upperBound)
+        guard lo < hi else {
+            // Empty or out-of-range run (degenerate input): zero length instead of an index trap.
+            let t0 = n > 0 ? t[min(lo, n - 1)] : 0
+            return Interval(start: t0, end: t0)
+        }
+        return Interval(start: t[lo], end: t[hi - 1] + dt)
     }
 }

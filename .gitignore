@@ -9,11 +9,20 @@ build/
 *.xcscmblueprint
 *.xccheckout
 
-# Core ML model weights are installed locally with Tools/install_model.py and are not
-# published here (see MODEL_PROVENANCE.md).
-RodentLimb/Models/*.mlpackage
-RodentLimb/Models/*.mlpackage.zip
+# Core ML model weights are installed locally with Tools/install_model.py (iPhone) and
+# Mac/tools/install_model.py (Mac); they are not published here (see MODEL_PROVENANCE.md).
+*.mlpackage
+*.mlpackage.zip
+*.mlmodelc
 *.installing
+
+# Archives and exported builds
+*.xcarchive
+*.ipa
+*.pkg
+
+# Original screen recordings (only the encoded clips in docs/public/videos are published)
+*.mov
 
 # Manual website (VitePress)
 node_modules/
