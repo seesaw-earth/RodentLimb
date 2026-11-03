@@ -1,118 +1,131 @@
-// RootView.swift — tabs (Home · Data · Settings), first-launch onboarding, new-analysis sheet.
+// RootView.swift — tabs (Tasks · Processing · Settings), first-launch onboarding, the New Task and
+// Add Videos sheets, and the Undo toast after a delete.
 
 import SwiftUI
 
 @MainActor
 struct RootView: View {
     @EnvironmentObject private var app: AppModel
+    @EnvironmentObject private var store: SessionStore
     @EnvironmentObject private var queue: ProcessingQueue
     @EnvironmentObject private var engine: PoseEngine
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("rl.onboarded") private var onboarded = false
     @State private var showOnboarding = false
 
+    private var waiting: Int { store.recordings.reduce(0) { $0 + ($1.status == .queued || $1.status == .processing ? 1 : 0) } }
+
     var body: some View {
         TabView(selection: $app.tab) {
-            HomeView()
-                .tabItem { Label(L("Home", "首页"), systemImage: "house.fill") }
-                .tag(AppTab.home)
-            LibraryView()
-                .tabItem { Label(L("Data", "数据"), systemImage: "tray.full.fill") }
-                .tag(AppTab.library)
+            TasksView()
+                .tabItem { Label(L("Tasks", "任务"), systemImage: "list.bullet.rectangle") }
+                .tag(AppTab.tasks)
+            ProcessingView()
+                .tabItem { Label(L("Processing", "处理"), systemImage: "arrow.triangle.2.circlepath") }
+                .badge(waiting)
+                .tag(AppTab.processing)
             SettingsView()
-                .tabItem { Label(L("Settings", "设置"), systemImage: "gearshape.fill") }
+                .tabItem { Label(L("Settings", "设置"), systemImage: "gearshape") }
                 .tag(AppTab.settings)
         }
         .minimizingTabBar()
-        .fontDesign(.rounded)
-        .sheet(item: $app.newSession) { req in
-            NewSessionSheet(initialAssay: req.assay)
+        .sheet(item: $app.addVideosRequest) { req in
+            AddVideosSheet(task: req.task)
                 .environmentObject(app)
-                .environmentObject(app.store)
-                .environmentObject(app.queue)
-                .fontDesign(.rounded)
+                .environmentObject(store)
+                .environmentObject(queue)
+                .environmentObject(engine)
+        }
+        .sheet(isPresented: $app.showNewTask) {
+            NewTaskSheet { t in
+                app.tab = .tasks
+                app.tasksPath = [.task(t)]
+            }
+            .environmentObject(store)
         }
         .fullScreenCover(isPresented: $showOnboarding, onDismiss: { onboarded = true }) {
-            OnboardingView().fontDesign(.rounded)
+            OnboardingView()
         }
+        .overlay(alignment: .bottom) { UndoToast().environmentObject(app) }
+        .overlay {
+            // The library is read off the main thread at launch (large libraries take a moment).
+            if !store.isLoaded {
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text(L("Opening library…", "正在打开资料库…")).font(.subheadline).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Palette.canvas)
+            }
+        }
+        .toast($app.notice)
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { app.store.flush() }
+            // Pause GPU work first, then save.
             queue.scenePhaseChanged(phase)
+            switch phase {
+            case .background: store.flushForBackground()
+            case .inactive: store.flush()
+            default: break
+            }
         }
         .task {
             if !onboarded { showOnboarding = true }
+            await store.waitUntilLoaded()
             queue.kick()
-            if engine.isInstalled, engine.state == .notLoaded { _ = await engine.load() }
+            let m = PoseModelID.defaultChoice
+            if engine.isInstalled(m), engine.state(m) == .notLoaded { _ = await engine.load(m) }
         }
     }
 }
 
-/// One row used in Home and Data lists. `card` adds its own background (Home); in a List the
-/// system provides the cell.
+/// "Moved to Recently Deleted — Undo" for six seconds after a delete.
 @MainActor
-struct SessionRow: View {
-    let session: Session
-    var card = true
-    @EnvironmentObject private var queue: ProcessingQueue
+struct UndoToast: View {
+    @EnvironmentObject private var app: AppModel
 
     var body: some View {
-        HStack(spacing: 12) {
-            AssayBadge(assay: session.assay, size: 36)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(session.displayName).font(.body.weight(.semibold)).lineLimit(1)
-                    if !session.group.isEmpty {
-                        Text(session.group).font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1)
-                    }
+        Group {
+            if let item = app.undo {
+                HStack(spacing: 14) {
+                    Text(item.message)
+                        .font(.subheadline)
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    Button(L("Undo", "撤销")) { app.undoDelete(item) }
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minHeight: 44)
                 }
-                statusLine
-            }
-            Spacer(minLength: 4)
-            if card {
-                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 58)
+                .transition(Motion.reduced ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                .task(id: item.id) {
+                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    if app.undo?.id == item.id { withAnimation(Motion.gentle) { app.undo = nil } }
+                }
+                .accessibilityElement(children: .contain)
             }
         }
-        .padding(.vertical, card ? 12 : 2)
-        .padding(.horizontal, card ? 14 : 0)
-        .background {
-            if card { RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Palette.card) }
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
+        .animation(Motion.gentle, value: app.undo?.id)
     }
+}
 
-    @ViewBuilder
-    private var statusLine: some View {
-        switch session.status {
-        case .done:
-            if let m = session.summary.first {
-                HStack(spacing: 4) {
-                    Text(m.label.text).foregroundStyle(.secondary)
-                    Text(m.formatted + (m.unit.isEmpty ? "" : " " + m.unit)).monospacedDigit().foregroundStyle(.primary)
-                    if session.worstNote == .warning || session.worstNote == .error {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.warning)
-                            .accessibilityLabel(L("Has warnings", "有警告"))
-                    }
-                }
-                .font(.footnote)
-                .lineLimit(1)
-            } else {
-                Label(session.status.title, systemImage: session.status.symbol).font(.footnote).foregroundStyle(Palette.success)
+extension View {
+    /// Destinations shared by every tab's navigation stack.
+    func routeDestinations() -> some View {
+        navigationDestination(for: Route.self) { route in
+            switch route {
+            case .task(let t): TaskView(task: t)
+            case .session(let id): SessionDetailView(id: id)
+            case .recording(let id): RecordingDetailView(id: id)
+            case .allVideos: AllVideosView()
+            case .unassigned: UnassignedView()
+            case .needsReview: NeedsReviewView()
+            case .recentlyDeleted: RecentlyDeletedView()
             }
-        case .processing:
-            LiveProgress(progress: queue.progress) { p in
-                let f = queue.currentID == session.id ? p.fraction : 0
-                HStack(spacing: 6) {
-                    ProgressView(value: f).frame(maxWidth: 90)
-                    Text(String(format: "%.0f%%", f * 100)).font(.footnote).monospacedDigit().foregroundStyle(.secondary)
-                }
-            }
-        case .needsSetup:
-            Label(session.status.title, systemImage: session.status.symbol).font(.footnote).foregroundStyle(Palette.warning)
-        case .failed:
-            Label(session.status.title, systemImage: session.status.symbol).font(.footnote).foregroundStyle(Palette.danger)
-        case .queued:
-            Label(session.status.title, systemImage: session.status.symbol).font(.footnote).foregroundStyle(.secondary)
         }
     }
 }

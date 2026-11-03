@@ -16,7 +16,7 @@ struct TSTMotionCard: View {
 
     var body: some View {
         Card {
-            CardHeader(L("Motion over time", "运动随时间变化"), symbol: "waveform.path",
+            CardHeader(L("Motion over time", "运动随时间变化"),
                        subtitle: L("Shaded = immobile · dashed line = threshold. Tap the chart to jump to that moment.",
                                    "阴影 = 不动，虚线 = 阈值。轻点图表可跳到该时刻。"))
             chart
@@ -67,7 +67,7 @@ struct TSTPerMinuteCard: View {
 
     var body: some View {
         Card {
-            CardHeader(L("Immobility per minute", "每分钟不动时间"), symbol: "chart.bar",
+            CardHeader(L("Immobility per minute", "每分钟不动时间"),
                        subtitle: L("Gray minutes are outside the analysis window.", "灰色为分析窗口之外的分钟。"))
             Chart {
                 ForEach(Array(detail.perMinute.enumerated()), id: \.offset) { item in
@@ -104,7 +104,7 @@ struct CylinderUseCard: View {
         let rows = counts
         let total = max(1, rows.map(\.1).reduce(0, +))
         Card {
-            CardHeader(L("Forelimb use", "前爪使用"), symbol: "hand.raised")
+            CardHeader(L("Forelimb use", "前爪使用"))
             GeometryReader { geo in
                 HStack(spacing: 3) {
                     ForEach(rows.indices, id: \.self) { i in
@@ -118,7 +118,7 @@ struct CylinderUseCard: View {
             }
             .frame(height: 26)
             .accessibilityHidden(true)
-            HStack(spacing: 18) {
+            FlowLayout(spacing: 18, lineSpacing: 8) {
                 ForEach(rows.indices, id: \.self) { i in
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 5) {
@@ -139,7 +139,7 @@ struct CylinderTimelineCard: View {
     let detail: CylinderDetail
     var body: some View {
         Card {
-            CardHeader(L("Contacts over time", "触壁时间分布"), symbol: "timeline.selection")
+            CardHeader(L("Contacts over time", "触壁时间分布"))
             Chart {
                 ForEach(detail.events) { e in
                     PointMark(x: .value("t", e.onset), y: .value("paw", e.label.name))
@@ -167,7 +167,7 @@ struct CylinderEventList: View {
 
     var body: some View {
         Card {
-            CardHeader(L("Check each contact", "逐个复核触壁"), symbol: "checklist",
+            CardHeader(L("Check each contact", "逐个复核触壁"),
                        subtitle: L("Tap a row to play it. Fix the label if the automatic call is wrong — edits are kept.",
                                    "轻点行即可播放该片段；如自动判断有误，可修改标签，修改会保留。"))
             Picker(L("Filter", "筛选"), selection: $filter) {
@@ -179,7 +179,7 @@ struct CylinderEventList: View {
                 Text(L("No contacts yet. Check the calibration and parameters.", "尚未检测到触壁，请检查标定和参数。"))
                     .font(.footnote).foregroundStyle(.secondary)
             }
-            VStack(spacing: 2) {
+            LazyVStack(spacing: 2) {
                 ForEach(showAll ? list : Array(list.prefix(10))) { e in
                     EventRow(event: e, active: currentTime >= e.onset - 0.05 && currentTime <= e.offset,
                              seek: seek, relabel: relabel)
@@ -206,9 +206,12 @@ private struct EventRow: View {
         HStack(spacing: 10) {
             Button { seek(max(0, event.onset - 0.5)) } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: active ? "waveform.circle.fill" : "play.circle.fill")
+                    // Playback control: plays the video from just before this event.
+                    Image(systemName: "play.circle.fill")
                         .font(.title2)
                         .foregroundStyle(Palette.label(event.label))
+                        .opacity(active ? 1 : 0.8)
+                        .accessibilityLabel(L("Play from here", "从这里播放"))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(Fmt.clockPrecise(event.onset)).font(.subheadline.monospacedDigit().weight(.medium))
                         Text(subtitle).font(.caption).foregroundStyle(.secondary)
@@ -218,10 +221,8 @@ private struct EventRow: View {
             .buttonStyle(.plain)
             Spacer()
             Menu {
-                ForEach(PawLabel.allCases) { l in
-                    Button { relabel(event.id, l == event.auto ? nil : l) } label: {
-                        if l == event.label { Label(l.name, systemImage: "checkmark") } else { Text(l.name) }
-                    }
+                Picker(L("Label", "标签"), selection: Binding(get: { event.label }, set: { l in relabel(event.id, l == event.auto ? nil : l) })) {
+                    ForEach(PawLabel.allCases) { l in Text(l.name).tag(l) }
                 }
             } label: {
                 Text(event.label.short)
@@ -229,6 +230,9 @@ private struct EventRow: View {
                     .foregroundStyle(event.label == .ignore ? Color.secondary : Color.white)
                     .frame(minWidth: 54, minHeight: 32)
                     .background(event.label == .ignore ? Palette.inset : Palette.label(event.label), in: Capsule())
+                    // 44-point touch target around the 32-point chip.
+                    .frame(minWidth: 54, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel(String(format: L("Label: %@. Change", "标签：%@，更改"), event.label.name))
         }
@@ -289,7 +293,7 @@ struct FootfallCard: View {
 
     var body: some View {
         Card {
-            CardHeader(L("Footfall pattern", "足落模式"), symbol: "chart.bar.doc.horizontal",
+            CardHeader(L("Footfall pattern", "足落模式"),
                        subtitle: L("Bars = paw on the ground (stance); gaps = swing.", "色条 = 爪着地（支撑相）；空隙 = 摆动相。"))
             FootfallChart(bars: bars, start: start, length: windowLength, now: nowMarker)
             if !follow && lastTime > windowLength {
@@ -342,7 +346,7 @@ struct GaitPatternCard: View {
     var body: some View {
         let total = max(1, patterns.map(\.count).reduce(0, +))
         Card {
-            CardHeader(L("Gait pattern", "步态模式"), symbol: "figure.walk.motion",
+            CardHeader(L("Gait pattern", "步态模式"),
                        subtitle: L("Each hind stride, classified from interlimb phase (after Bellardita & Kiehn 2015).",
                                    "按每个后肢步幅的肢间相位分类（参考 Bellardita & Kiehn 2015）。"))
             GeometryReader { geo in
@@ -358,7 +362,7 @@ struct GaitPatternCard: View {
             }
             .frame(height: 22)
             .accessibilityHidden(true)
-            HStack(spacing: 14) {
+            FlowLayout(spacing: 14, lineSpacing: 8) {
                 ForEach(patterns) { p in
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 5) {
@@ -381,7 +385,7 @@ struct PawTableCard: View {
 
     var body: some View {
         Card {
-            CardHeader(L("Per paw", "各爪参数"), symbol: "tablecells")
+            CardHeader(L("Per paw", "各爪参数"))
             Grid(alignment: .trailing, horizontalSpacing: 10, verticalSpacing: 8) {
                 header
                 Divider()
@@ -434,7 +438,7 @@ struct PhaseCard: View {
     let detail: GaitDetail
     var body: some View {
         Card {
-            CardHeader(L("Interlimb coordination", "肢间协调"), symbol: "circle.dotted",
+            CardHeader(L("Interlimb coordination", "肢间协调"),
                        subtitle: L("0.5 = alternating, 0 / 1 = together. Distance from the center = consistency (R).",
                                    "0.5 = 交替，0/1 = 同步。离圆心越远，一致性（R）越高。"))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 10)], spacing: 10) {
@@ -451,7 +455,7 @@ struct FootprintCard: View {
 
     var body: some View {
         Card {
-            CardHeader(L("Footprints", "足印分布"), symbol: "pawprint",
+            CardHeader(L("Footprints", "足印分布"),
                        subtitle: L("Where each paw was planted, in the video frame.", "每次着地的爪位置（视频画面坐标）。"))
             FootprintChart(prints: detail.footprints, videoSize: videoSize)
             PawLegend()
@@ -467,20 +471,23 @@ struct FootprintChart: View {
     private var w: Double { Double(max(1, videoSize.width)) }
     private var h: Double { Double(max(1, videoSize.height)) }
 
+    // Drawn with Canvas rather than Swift Charts: a long gait video has thousands of footprints,
+    // and one PointMark per footprint made this card slow to appear and to scroll.
     var body: some View {
-        Chart {
-            ForEach(Array(prints.enumerated()), id: \.offset) { item in
-                PointMark(x: .value("x", item.element.x), y: .value("y", -item.element.y))
-                    .foregroundStyle(KeypointColors.color(item.element.paw))
-                    .symbolSize(28)
+        Canvas { ctx, size in
+            let sx = size.width / w, sy = size.height / h
+            let r: CGFloat = 2.6
+            var paths: [Kp: Path] = [:]
+            for p in prints where p.x.isFinite && p.y.isFinite {
+                let c = CGPoint(x: p.x * sx, y: p.y * sy)
+                paths[p.paw, default: Path()].addEllipse(in: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r))
             }
+            for paw in Kp.paws { if let path = paths[paw] { ctx.fill(path, with: .color(KeypointColors.color(paw))) } }
         }
-        .chartXScale(domain: 0.0...w)
-        .chartYScale(domain: (-h)...0.0)
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
         .aspectRatio(CGFloat(w / h), contentMode: .fit)
+        .padding(6)
         .background(Palette.inset, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityLabel(String(format: L("%d footprints", "%d 个足印"), prints.count))
     }
 }
 

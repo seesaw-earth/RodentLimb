@@ -32,6 +32,8 @@ struct CalibrationView: View {
     /// Video time of the frame actually shown (the generator may return a nearby frame), so the
     /// keypoints drawn on it always belong to that exact frame.
     @State private var shownTime: Double = 0
+    /// Counts manual edits, so a background auto-fit never overwrites a drag made meanwhile.
+    @State private var editCount = 0
 
     enum DragMode { case move, resize, rulerA, rulerB, floor }
     enum Mode { case circle, floor, ruler }
@@ -41,7 +43,7 @@ struct CalibrationView: View {
     private var mode: Mode {
         guard let s = session else { return .circle }
         switch s.assay {
-        case .gait, .tailSuspension: return .ruler
+        case .gait, .tailSuspension, .itch, .pain, .grooming, .seizure: return .ruler
         case .cylinder: return s.params.cylinder.view == .bottom ? .circle : .floor
         }
     }
@@ -77,7 +79,9 @@ struct CalibrationView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Menu {
                         Button(L("Save for this video", "仅保存到本视频")) { save(all: false) }
-                        Button(L("Save and use for all videos of this assay", "保存并用于该范式的所有视频")) { confirmAll = true }
+                        if !store.taskPeers(of: sessionID).isEmpty {
+                            Button(L("Save and use for all sessions of this task", "保存并用于本任务的所有实验")) { confirmAll = true }
+                        }
                     } label: {
                         Text(L("Save", "保存")).fontWeight(.semibold)
                     } primaryAction: {
@@ -85,8 +89,8 @@ struct CalibrationView: View {
                     }
                 }
             }
-            .confirmationDialog(L("Use this calibration for every video of this assay? Do this only if the camera did not move.",
-                                  "将此标定用于该范式的所有视频？仅在相机位置未移动时这样做。"),
+            .confirmationDialog(L("Use this calibration for every session of this task? Do this only if the camera did not move.",
+                                  "将此标定用于本任务的所有实验？仅在相机位置未移动时这样做。"),
                                 isPresented: $confirmAll, titleVisibility: .visible) {
                 Button(L("Use for all", "全部使用")) { save(all: true) }
             }
@@ -190,6 +194,7 @@ struct CalibrationView: View {
                 func toVideo(_ p: CGPoint) -> CGPoint { CGPoint(x: (p.x - rect.minX) / s, y: (p.y - rect.minY) / s) }
                 let start = toVideo(g.startLocation), now = toVideo(g.location)
                 if dragMode == nil {
+                    editCount += 1
                     dragStart = (circle, ruler, floorY)
                     let touchSlop = 30 / s
                     switch mode {
@@ -248,7 +253,7 @@ struct CalibrationView: View {
                 InfoRow(key: L("Center", "圆心"), value: String(format: "%.0f, %.0f px", circle.cx, circle.cy))
                 InfoRow(key: L("Radius", "半径"), value: String(format: "%.0f px", circle.r))
                 if track != nil {
-                    Button { autoCircle() } label: { Label(L("Auto-fit from tracking", "根据追踪自动拟合"), systemImage: "wand.and.stars") }
+                    Button(L("Auto-fit from tracking", "根据追踪自动拟合")) { autoCircle() }
                         .buttonStyle(SecondaryButtonStyle())
                 }
             }
@@ -256,7 +261,7 @@ struct CalibrationView: View {
             Card {
                 InfoRow(key: L("Floor line", "地面线"), value: String(format: "y = %.0f px", floorY))
                 if track != nil {
-                    Button { autoFloor() } label: { Label(L("Estimate from hind paws", "根据后爪位置估计"), systemImage: "wand.and.stars") }
+                    Button(L("Estimate from hind paws", "根据后爪位置估计")) { autoFloor() }
                         .buttonStyle(SecondaryButtonStyle())
                 }
             }
@@ -329,14 +334,37 @@ struct CalibrationView: View {
         }
     }
 
-    private func percentile(_ v: [Double], _ q: Double) -> Double? {
+    nonisolated private static func percentile(_ v: [Double], _ q: Double) -> Double? {
         let s = v.sorted()
         guard !s.isEmpty else { return nil }
         return s[min(s.count - 1, max(0, Int(Double(s.count - 1) * q)))]
     }
 
+    /// The fits sort every tracked keypoint of the video (hundreds of thousands of values for a
+    /// long one), so they run in the background; a drag made meanwhile wins over the result.
     private func autoCircle() {
         guard let t = track else { return }
+        let edits = editCount
+        Task { @MainActor in
+            let computed = await Task.detached(priority: .userInitiated) { CalibrationView.fitCircle(t) }.value
+            guard let fit = computed, edits == editCount else { return }
+            withAnimation(Motion.gentle) { circle = fit }
+            hasCircle = true
+        }
+    }
+
+    private func autoFloor() {
+        guard let t = track else { return }
+        let edits = editCount
+        Task { @MainActor in
+            let computed = await Task.detached(priority: .userInitiated) { CalibrationView.fitFloor(t) }.value
+            guard let y = computed, edits == editCount else { return }
+            withAnimation(Motion.gentle) { floorY = y }
+            hasFloor = true
+        }
+    }
+
+    nonisolated private static func fitCircle(_ t: PoseTrack) -> CircleCal? {
         var xs: [Double] = [], ys: [Double] = []
         for k in Kp.allCases {
             for i in stride(from: 0, to: t.frameCount, by: 2) where t.c[k.rawValue][i] >= 0.5 && t.x[k.rawValue][i] >= 0 {
@@ -344,20 +372,16 @@ struct CalibrationView: View {
             }
         }
         guard let x0 = percentile(xs, 0.005), let x1 = percentile(xs, 0.995),
-              let y0 = percentile(ys, 0.005), let y1 = percentile(ys, 0.995), x1 > x0, y1 > y0 else { return }
-        withAnimation(Motion.gentle) {
-            circle = CircleCal(cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, r: max(x1 - x0, y1 - y0) / 2 * 1.02)
-        }
-        hasCircle = true
+              let y0 = percentile(ys, 0.005), let y1 = percentile(ys, 0.995), x1 > x0, y1 > y0 else { return nil }
+        return CircleCal(cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, r: max(x1 - x0, y1 - y0) / 2 * 1.02)
     }
 
-    private func autoFloor() {
-        guard let t = track else { return }
+    nonisolated private static func fitFloor(_ t: PoseTrack) -> Double? {
         var ys: [Double] = []
         for k in [Kp.lh, .rh] {
             for i in 0..<t.frameCount where t.c[k.rawValue][i] >= 0.5 && t.y[k.rawValue][i] >= 0 { ys.append(Double(t.y[k.rawValue][i])) }
         }
-        if let y = percentile(ys, 0.95) { withAnimation(Motion.gentle) { floorY = y }; hasFloor = true }
+        return percentile(ys, 0.95)
     }
 
     private func save(all: Bool, removeScale: Bool = false) {
@@ -371,14 +395,8 @@ struct CalibrationView: View {
         }
         store.update(sessionID) { $0.calibration = cal }
         if s.hasPose { store.analyze(sessionID) }
-        if all {
-            for other in store.sessions where other.assay == s.assay && other.id != s.id {
-                var c = cal
-                c.copiedFrom = s.displayName
-                store.update(other.id) { $0.calibration = c }
-                if other.hasPose { store.analyze(other.id) }
-            }
-        }
+        // Only the other sessions of this task (same paradigm and study), never other tasks.
+        if all { store.applyToTask(from: sessionID, calibration: cal) } else { store.flush() }
         if !removeScale { dismiss() }
     }
 }

@@ -13,6 +13,18 @@ gh workflow run deploy.yml && gh run watch
 
 Then open https://seesaw-earth.github.io/RodentLimb/ (allow a minute after the run turns green).
 
+## Home-page clips
+
+Screen recordings become the clips of the home page with
+
+```bash
+tools/homepage/encode-all.sh        # list of recordings inside the script
+python3 tools/homepage/build_home.py  # only after changing the home-page texts or layout
+```
+
+The home pages (`docs/public/index.html`, `docs/public/zh/index.html`) are generated from
+`tools/homepage/home.template.html` and the texts in `build_home.py`.
+
 ## Later updates
 
 ```bash

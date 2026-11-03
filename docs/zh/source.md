@@ -8,13 +8,13 @@ RodentLimb 以 **[GNU AGPL-3.0](https://github.com/seesaw-earth/RodentLimb/blob/
 
 iPhone 版和 Mac 版共用一层分析代码，因此同一段视频在两端得到相同的关键点和相同的指标。
 
-| 部分 | 作用 |
-|---|---|
-| **共享分析层** | 关键点预处理、七个分析器、质控、研究设计、导出和方法学文字。只依赖 Foundation，因此也能在命令行编译和测试 |
-| **iPhone 版** | 在手机上录制和导入、Core ML 识别、iPhone 界面 |
-| **Mac 版** | 资料库、带检查点的批处理引擎、Core ML + Vision 识别、Mac 界面 |
-| **姿态模型** | 不在仓库中（见[姿态模型](./models/)）；用 `install_model.py` 安装到工程中 |
-| **本手册** | `docs/` 中的 VitePress 网站，通过 GitHub Pages 发布 |
+| 部分 | 文件夹 | 作用 |
+|---|---|---|
+| **共享分析层** | `Mac/Shared/`（`RodentLimb/` 中有相同文件） | 关键点预处理、七个分析器、质控、研究设计、导出和方法学文字。只依赖 Foundation，因此也能在命令行编译和测试 |
+| **iPhone 版** | `RodentLimb/`、`RodentLimb.xcodeproj` | 在手机上导入、Core ML 识别、iPhone 与 iPad 界面 |
+| **Mac 版** | `Mac/macOS/` | 资料库、带检查点的批处理引擎、Core ML + Vision 识别、Mac 界面 |
+| **姿态模型** | 不在仓库中 | 见[姿态模型](./models/)；用 `install_model.py` 安装到各工程中 |
+| **本网站** | `docs/` | VitePress 手册；首页是 `docs/public/index.html` 与 `docs/public/zh/index.html` |
 
 ## 代码中的对应位置
 
@@ -36,24 +36,34 @@ iPhone 版和 Mac 版共用一层分析代码，因此同一段视频在两端�
 | 中英文文字 | — | 每个界面中的 `L("English", "中文")` 调用；`L10n.swift` |
 
 ::: info 仓库中的版本
-仓库正在更新为两个 App 的 1.3.5 源代码。在完成之前，其中可能还是较早的版本；各版本的更新说明见[更新说明](./reference/changelog.md)。
+仓库中是两个 App 的 1.4.2 源代码。各版本的更新说明见[更新说明](./reference/changelog.md)。
 :::
 
 ## 从源代码构建
 
-需要 **Xcode 16 或更新版本**。没有第三方 Swift 包。
+需要 **Xcode 26 或更新版本**。没有第三方 Swift 包。
 
-- **Mac**：macOS 14 或更新版本。打开 Mac 工程，选择签名团队后运行。工程使用同步文件夹，新文件会自动加入。
-- **iPhone**：iOS 17 或更新版本的 iPhone 或 iPad。
+- **Mac**：macOS 14 或更新版本。打开 `Mac/macOS/RodentLimb.xcodeproj`，选择签名团队后运行。工程使用同步文件夹，新文件会自动加入。
+- **iPhone**：iOS 17 或更新版本的 iPhone 或 iPad。打开仓库顶层的 `RodentLimb.xcodeproj`。
 
 模型权重不在仓库中。构建前请先安装到工程中，例如：
 
 ```bash
-python3 tools/install_model.py --fp16 /path/to/CylinderPose7_FP16_640.mlpackage.zip   # 可见光
-python3 tools/install_model.py --nir  /path/to/PalmReaderPose8_640_W8A16.mlpackage.zip # 近红外
+# iPhone 与 iPad
+python3 Tools/install_model.py --fp16 CylinderPose7_FP16_640.mlpackage.zip --nir PalmReaderPose8_640_W8A16.mlpackage.zip
+# Mac
+python3 Mac/tools/install_model.py --fp16 CylinderPose7_FP16_640.mlpackage.zip --nir PalmReaderPose8_640_W8A16.mlpackage.zip
 ```
 
 权重的来源和训练方法见[模型页面](./models/)。
+
+## 测试
+
+```bash
+sh Tools/core_tests/run_core_tests.sh      # iPhone 分析层
+sh Mac/tools/run_core_tests.sh             # Mac 分析层与资料库
+sh Mac/tools/verify_shared.sh RodentLimb   # 两个 App 的共用文件完全一致
+```
 
 ## 构建本手册
 

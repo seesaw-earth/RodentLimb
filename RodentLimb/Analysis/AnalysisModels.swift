@@ -5,7 +5,7 @@ import Foundation
 // MARK: - Assays
 
 enum Assay: String, Codable, CaseIterable, Identifiable {
-    case tailSuspension, cylinder, gait
+    case tailSuspension, cylinder, gait, itch, pain, grooming, seizure
     var id: String { rawValue }
 
     var name: LText {
@@ -13,6 +13,10 @@ enum Assay: String, Codable, CaseIterable, Identifiable {
         case .tailSuspension: return LText("Tail suspension", "悬尾实验")
         case .cylinder: return LText("Cylinder test", "圆筒实验")
         case .gait: return LText("Gait analysis", "步态分析")
+        case .itch: return LText("Itch (scratching)", "瘙痒（抓挠）")
+        case .pain: return LText("Spontaneous pain", "自发痛行为")
+        case .grooming: return LText("Self-grooming", "自我理毛")
+        case .seizure: return LText("Seizure scoring", "癫痫发作评分")
         }
     }
 
@@ -21,6 +25,10 @@ enum Assay: String, Codable, CaseIterable, Identifiable {
         case .tailSuspension: return "TST"
         case .cylinder: return "CYL"
         case .gait: return "GAIT"
+        case .itch: return "ITCH"
+        case .pain: return "PAIN"
+        case .grooming: return "GROOM"
+        case .seizure: return "SZ"
         }
     }
 
@@ -29,6 +37,18 @@ enum Assay: String, Codable, CaseIterable, Identifiable {
         case .tailSuspension: return "arrow.down.to.line"
         case .cylinder: return "cylinder"
         case .gait: return "pawprint.fill"
+        case .itch: return "allergens"
+        case .pain: return "flame.fill"
+        case .grooming: return "sparkles"
+        case .seizure: return "bolt.fill"
+        }
+    }
+
+    /// Behavior assays share the event / ethogram result (`AnalysisResult.behavior`).
+    var isBehavior: Bool {
+        switch self {
+        case .itch, .pain, .grooming, .seizure: return true
+        default: return false
         }
     }
 
@@ -43,6 +63,18 @@ enum Assay: String, Codable, CaseIterable, Identifiable {
         case .gait:
             return LText("Stance/swing, stride, duty factor, base of support, interlimb phase, regularity",
                          "支撑相/摆动相、步幅、占空比、支撑面宽度、肢间相位、规律性")
+        case .itch:
+            return LText("Scratching bouts, time and latency after a pruritogen; time course; which hind paw",
+                         "致痒剂后的抓挠次数、时长与潜伏期；时间进程；哪只后爪")
+        case .pain:
+            return LText("Licking/biting and flinching of the injected paw; formalin phase I / II; time course",
+                         "舔咬与甩动注射爪；福尔马林 I / II 相；时间进程")
+        case .grooming:
+            return LText("Grooming time, bouts, latency; face, body, hind-leg and tail/genital grooming; sequence",
+                         "理毛时间、次数、潜伏期；面部、躯体、后腿、尾/生殖区理毛；序列")
+        case .seizure:
+            return LText("Myoclonic jerks, clonic and tonic-clonic seizures, tonic extension; latencies; Racine stage",
+                         "肌阵挛、阵挛与强直-阵挛发作、强直伸展；潜伏期；Racine 分级")
         }
     }
 
@@ -57,6 +89,18 @@ enum Assay: String, Codable, CaseIterable, Identifiable {
         case .gait:
             return LText("Bottom (ventral) view of a straight walkway, camera fixed, high frame rate (≥ 60 fps recommended). Place a ruler in view once to calibrate cm.",
                          "直线步道的仰视（腹侧）拍摄，相机固定，帧率越高越好（建议 ≥ 60 fps）。画面中放一次标尺用于厘米标定。")
+        case .itch:
+            return LText("Bottom view through a transparent floor, one mouse per chamber, ≥ 30 fps (60 fps is better: scratching strokes are fast). Record 30–60 min from the injection; set the injection time in Parameters if the video starts earlier.",
+                         "透明底面仰视拍摄，每个小室一只小鼠，≥ 30 fps（60 fps 更好，抓挠动作很快）。从注射起录制 30–60 分钟；若视频早于注射开始，请在“参数”中设置注射时刻。")
+        case .pain:
+            return LText("Bottom view through a transparent floor so the injected paw is visible, ≥ 30 fps, in normal light. Formalin: record 45–60 min from the injection; capsaicin: 5–10 min. Set the injected paw in Parameters.",
+                         "透明底面仰视拍摄，确保注射爪可见，≥ 30 fps，正常光照。福尔马林：从注射起录制 45–60 分钟；辣椒素：5–10 分钟。在“参数”中设置注射爪。")
+        case .grooming:
+            return LText("Bottom view through a transparent floor, one mouse, ≥ 30 fps. A 10-min session after a short habituation is common; for splash tests start right after the spray.",
+                         "透明底面仰视拍摄，每段一只小鼠，≥ 30 fps。常用做法是短暂适应后记录 10 分钟；溅水实验则在喷雾后立即开始。")
+        case .seizure:
+            return LText("Bottom view through a transparent floor or cylinder, one mouse, ≥ 30 fps, in normal light. Start before the convulsant injection and record ≥ 30 min after it; set the injection time in Parameters. Automated stages are estimates — confirm every event on the video.",
+                         "透明底面或透明圆筒仰视拍摄，每段一只小鼠，≥ 30 fps，正常光照。在注射致惊厥药前开始录制，注射后至少录 30 分钟；在“参数”中设置注射时刻。自动分级仅为估计，请在视频上逐个确认事件。")
         }
     }
 }
@@ -66,10 +110,31 @@ enum Assay: String, Codable, CaseIterable, Identifiable {
 struct CommonParams: Codable, Equatable {
     /// Keypoints below this confidence are treated as missing.
     var keypointThreshold: Double = 0.30
-    /// Gaps up to this length (s) are linearly interpolated.
+    /// Gaps up to this length (s) are filled; longer gaps stay missing and are excluded.
     var maxGap: Double = 0.25
     /// Centered moving-average window for positions (s).
     var smoothing: Double = 0.10
+    /// How short gaps are filled (see GapRepair). Linear is the validated default.
+    var gapFill: GapFill = .linear
+    /// Remove implausible jumps (keypoint far from where the neighbouring frames put it) before
+    /// filling. Off by default so validated results do not change.
+    var rejectJumps: Bool = false
+    /// Jump threshold: distance from the ±0.1 s median position, in body lengths.
+    var jumpThreshold: Double = 0.5
+
+    init() {}
+
+    // Tolerant decoding: sessions saved before 1.3 lack the gap-repair keys.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = CommonParams()
+        keypointThreshold = (try? c.decodeIfPresent(Double.self, forKey: .keypointThreshold)) ?? d.keypointThreshold
+        maxGap = (try? c.decodeIfPresent(Double.self, forKey: .maxGap)) ?? d.maxGap
+        smoothing = (try? c.decodeIfPresent(Double.self, forKey: .smoothing)) ?? d.smoothing
+        gapFill = (try? c.decodeIfPresent(GapFill.self, forKey: .gapFill)) ?? d.gapFill
+        rejectJumps = (try? c.decodeIfPresent(Bool.self, forKey: .rejectJumps)) ?? d.rejectJumps
+        jumpThreshold = (try? c.decodeIfPresent(Double.self, forKey: .jumpThreshold)) ?? d.jumpThreshold
+    }
 }
 
 struct TSTParams: Codable, Equatable {
@@ -174,6 +239,25 @@ struct AssayParams: Codable, Equatable {
     var tst = TSTParams()
     var cylinder = CylinderParams()
     var gait = GaitParams()
+    var itch = ItchParams()
+    var pain = PainParams()
+    var grooming = GroomingParams()
+    var seizure = SeizureParams()
+
+    init() {}
+
+    // Tolerant decoding: sessions saved before the behavior assays existed lack those keys.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        common = try c.decodeIfPresent(CommonParams.self, forKey: .common) ?? CommonParams()
+        tst = try c.decodeIfPresent(TSTParams.self, forKey: .tst) ?? TSTParams()
+        cylinder = try c.decodeIfPresent(CylinderParams.self, forKey: .cylinder) ?? CylinderParams()
+        gait = try c.decodeIfPresent(GaitParams.self, forKey: .gait) ?? GaitParams()
+        itch = (try? c.decodeIfPresent(ItchParams.self, forKey: .itch)) ?? ItchParams()
+        pain = (try? c.decodeIfPresent(PainParams.self, forKey: .pain)) ?? PainParams()
+        grooming = (try? c.decodeIfPresent(GroomingParams.self, forKey: .grooming)) ?? GroomingParams()
+        seizure = (try? c.decodeIfPresent(SeizureParams.self, forKey: .seizure)) ?? SeizureParams()
+    }
 
     /// Gait needs much lighter position smoothing than the other assays: swing phases last only
     /// ~0.1 s, and a 0.1 s window would blur them into stance.
@@ -181,6 +265,15 @@ struct AssayParams: Codable, Equatable {
         var p = AssayParams()
         if assay == .gait { p.common.smoothing = 0.03 }
         return p
+    }
+
+    /// Settings that belong to one video, not to the study: the injection time (each video
+    /// starts at a different moment) and the injected paw.
+    mutating func keepPerAnimal(from other: AssayParams) {
+        itch.injectionTime = other.itch.injectionTime
+        pain.injectionTime = other.pain.injectionTime
+        pain.injectedPaw = other.pain.injectedPaw
+        seizure.injectionTime = other.seizure.injectionTime
     }
 }
 
@@ -383,6 +476,8 @@ struct AnalysisResult: Codable {
     var gait: GaitDetail?
     var analyzedAt: Date
     var poseCoverage: Double
+    /// Itch, pain, grooming and seizure results (events, ethogram, time course).
+    var behavior: BehaviorDetail? = nil
 
     func metric(_ key: String) -> Metric? { metrics.first { $0.key == key } }
 }

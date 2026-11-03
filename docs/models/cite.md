@@ -10,7 +10,7 @@ If RodentLimb contributes to published work, cite the app with the version you u
 @software{shi2026rodentlimb,
   author  = {Shi, Ziqing},
   title   = {RodentLimb: limb pose and behavior scoring for mouse videos},
-  version = {1.3.5},
+  version = {1.4.2},
   year    = {2026},
   url     = {https://seesaw-earth.github.io/RodentLimb/}
 }

@@ -44,7 +44,7 @@ enum TSTAnalyzer {
         }
 
         // Analysis window.
-        let videoEnd = max(duration, (s.t.last ?? 0) + s.dt)
+        let videoEnd = max(duration.finiteOr(0), ((s.t.last ?? 0) + s.dt).finiteOr(0))
         var w0 = max(0, p.windowStart), w1 = min(p.windowEnd, videoEnd)
         if w1 - w0 < 10 {
             notes.append(Note(.warning,
@@ -68,10 +68,12 @@ enum TSTAnalyzer {
         let latency = bouts.first?.start
 
         // Per-minute profile (whole video).
-        let minutes = max(1, Int(ceil(videoEnd / 60 - 1e-6)))
+        // Capped (~69 days) so a corrupt timestamp cannot request an enormous array; frames past
+        // the cap fall into the last minute, as frames past the end already do.
+        let minutes = min(100_000, max(1, Int(safe: ceil(videoEnd / 60 - 1e-6), fallback: 1)))
         var perMinute = [Double](repeating: 0, count: minutes)
         for i in 0..<n where immobileMask[i] {
-            let m = min(minutes - 1, Int(s.t[i] / 60))
+            let m = min(minutes - 1, max(0, Int(safe: s.t[i] / 60)))
             perMinute[m] += s.dt
         }
 

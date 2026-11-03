@@ -1,0 +1,66 @@
+== ITCH (rules)
+  scratch bouts                      recall 12/12  precision 12/12
+  scratching time 27.9 s (truth 25.3); bouts 12 (truth 12); L/R 8/4 (truth 8/4)
+  face-grooming segments mistaken for scratching: 0/3
+    [info] Automated detection is a first pass. Review the events on the video (Review tab) and relabel any that are wrong; edits are kept.
+  (model path ran: bouts 12; note: [info] Scratching was detected with the trained model ScratchModel.json (Scratch-AID, held-out test F1 0.90). )
+  after ignoring the first bout: bouts 11, edited 1
+== ITCH, cheek model (scratch = itch, unilateral forepaw wipe = pain)
+  scratch bouts                      recall 8/8  precision 8/8
+  wipe bouts                         recall 8/8  precision 8/8
+  face grooming counted as wipe: 0/3; as scratch: 0/3
+  wipe L/R 4/4 (truth 4/4); wipe time 13.7 s (truth 13.9); trains 8
+== PAIN (formalin-like, compressed phases I 0–120 s, II 180–480 s)
+  licking injected paw               recall 16/16  precision 16/16
+  licking other paw                  recall 4/4  precision 4/4
+  flinches                           recall 22/22  precision 22/22
+  licking phase I 34.3 s (truth 34.5); phase II 71.2 s (truth 71.6)
+  flinches 22 (truth 22); phase I 12 (truth 12); phase II 10 (truth 10)
+  contra licking 11.9 s (truth 12.0); bins lick_s [22.7, 11.6, 0, 19.1, 17.3, 18.0, 16.9, 0]
+    [info] Guarding and weight bearing are not scored: they need paw contact area or pressure, which keypoints do not provide.
+    [info] Automated detection is a first pass. Review the events on the video (Review tab) and relabel any that are wrong; edits are kept.
+== GROOMING
+  face : detected 31.6 s, truth 31.6 s, correctly placed 31.6 s
+  body : detected 11.4 s, truth 11.9 s, correctly placed 11.4 s
+  leg  : detected 11.1 s, truth 12.2 s, correctly placed 11.0 s
+  tail : detected 10.1 s, truth 11.1 s, correctly placed 10.1 s
+  total 64.1 s (truth 66.8); bouts 6 (truth 6); interrupted 17% (truth 1/6 = 17%); incorrect transitions 0% (truth 0%)
+   bout 15.000 26.400 face→body→leg→tail
+   bout 44.133 55.633 face→body→leg→tail
+   bout 75.133 89.267 face→body→leg→tail
+   bout 108.667 120.067 face→body→leg→tail
+   bout 139.167 150.367 face→body→leg→tail
+   bout 169.167 178.167 face
+    [info] Body-region scoring and transition analysis use four regions visible from below (face, body, hind leg, tail/genitals); the observer syntax has 
+    [info] Automated detection is a first pass. Review the events on the video (Review tab) and relabel any that are wrong; edits are kept.
+== SEIZURE (injection at 60 s)
+  arrest                             recall 1/2  precision 1/1
+  jerk                               recall 5/5  precision 5/5
+  clonic                             recall 1/1  precision 1/1
+  tonic_clonic                       recall 1/1  precision 1/1
+  running                            recall 1/1  precision 1/1
+  tonic                              recall 1/1  precision 1/1
+  max stage 7 (truth 7); latency jerk 21.533333 (truth 21.5); latency generalized 42.2 (truth 42.1); latency tonic 74.33333300000001 (truth 74.3)
+  baseline detections (before injection): 0; jerks 5 (truth 5)
+    arrest 66.733 74.233 1 
+    jerk 81.533 81.633 1 peak 5.2 BL/s
+    jerk 85.433 85.533 1 peak 5.3 BL/s
+    jerk 89.367 89.433 1 peak 5.0 BL/s
+    jerk 92.567 92.667 1 peak 5.2 BL/s
+    jerk 97.233 97.300 1 peak 5.2 BL/s
+    clonic 102.200 107.833 1 
+    tonic_clonic 118.100 123.033 1 with clonus
+    running 127.067 128.233 1 
+    tonic 134.333 140.200 1 
+    [warning] No movement for the 70 s after the tonic extension at 134.3 s — check whether the animal died.
+    [info] Stages follow the revised Racine scale for PTZ in mice (Van Erum et al. 2019), estimated from posture and movement seen from below. Whisker tre
+    [info] Automated detection is a first pass. Review the events on the video (Review tab) and relabel any that are wrong; edits are kept.
+== SEIZURE, modified Racine scale for kainate
+  max stage 5 (expected 5); latency generalized 42.2 (expected first clonic); death flag 1
+  stages: [('arrest',), ('clonic',), ('jerk',), ('running',), ('tonic',), ('tonic_clonic',)]
+== NEGATIVE CONTROL (exploration, rest, face/body grooming; 300 s)
+  itch     false detections: 0
+  cheek    false detections: 0
+  pain     false detections: 0
+  seizure  false detections: 0
+  grooming 47.2 s (truth 47.2)

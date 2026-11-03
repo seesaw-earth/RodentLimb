@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
-"""Install CylinderMousePoseV2 into the RodentLimb Xcode project.
+"""Install or update the pose models of the RodentLimb iPhone/iPad Xcode project.
 
-Usage (from the RodentLimb folder):
-  python3 Tools/install_model.py --v2 ~/Downloads/CylinderMousePoseV2.mlpackage.zip
+The app ships two models (Pose/PoseModels.swift):
+  --fp16  CylinderPose7_FP16_640      visible light, 7 keypoints (default)
+  --nir   PalmReaderPose8_640_W8A16   near-infrared dark box, 8 keypoints
+
+Usage (from the RodentLimb-iOS folder):
+  python3 Tools/install_model.py --fp16 ~/Downloads/CylinderPose7_FP16_640.mlpackage.zip
+  python3 Tools/install_model.py --nir ~/Downloads/PalmReaderPose8_640_W8A16.mlpackage.zip
 Accepts either the .mlpackage.zip exported from Colab or an unpacked .mlpackage folder.
-You can also point it at the copy already installed in CylinderPose:
-  python3 Tools/install_model.py --v2 ~/Downloads/CylinderPose_DualModel_AB/CylinderPose/CylinderPose/Models/CylinderMousePoseV2.mlpackage
 
-The Xcode project uses a synchronized folder, so the package is picked up automatically —
+CylinderMousePoseV2 (full precision, 38 MB) is no longer part of the app: videos tracked with it keep
+their results, and tracking them again uses CylinderPose7 FP16 (the same network). This script
+removes a leftover CylinderMousePoseV2.mlpackage from the Models folder.
+
+The Xcode project uses a synchronized folder, so the package is picked up automatically;
 do not drag it into Xcode again.
 """
 import argparse, pathlib, shutil, sys, tempfile, zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEST = ROOT / 'RodentLimb' / 'Models'
-NAME = 'CylinderMousePoseV2.mlpackage'
+FP16_NAME = 'CylinderPose7_FP16_640.mlpackage'
+NIR_NAME = 'PalmReaderPose8_640_W8A16.mlpackage'
+REMOVED = 'CylinderMousePoseV2.mlpackage'
 
 
 def locate(path, work):
@@ -41,23 +50,39 @@ def locate(path, work):
     return pkg
 
 
+def install(src, name, tmp):
+    tmp = pathlib.Path(tmp)
+    tmp.mkdir(parents=True, exist_ok=True)
+    pkg = locate(src, tmp)
+    target = DEST / name
+    staging = DEST / (name + '.installing')
+    if staging.exists():
+        shutil.rmtree(staging)
+    shutil.copytree(pkg, staging)
+    if target.exists():
+        shutil.rmtree(target)
+    staging.rename(target)
+    size = sum(f.stat().st_size for f in target.rglob('*') if f.is_file()) / 1e6
+    print(f'OK: {target} ({size:.1f} MB)')
+
+
 def main():
-    ap = argparse.ArgumentParser(description='Install CylinderMousePoseV2 into RodentLimb')
-    ap.add_argument('--v2', required=True, help='CylinderMousePoseV2 .mlpackage or .zip')
+    ap = argparse.ArgumentParser(description='Install the pose models into RodentLimb (iPhone/iPad)')
+    ap.add_argument('--fp16', help='CylinderPose7_FP16_640 .mlpackage or .zip (visible light, default)')
+    ap.add_argument('--nir', help='PalmReaderPose8_640_W8A16 .mlpackage or .zip (near-infrared dark box)')
     args = ap.parse_args()
+    if not args.fp16 and not args.nir:
+        ap.error('give --fp16 and/or --nir')
     DEST.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
-        pkg = locate(args.v2, pathlib.Path(tmp))
-        target = DEST / NAME
-        staging = DEST / (NAME + '.installing')
-        if staging.exists():
-            shutil.rmtree(staging)
-        shutil.copytree(pkg, staging)
-        if target.exists():
-            shutil.rmtree(target)
-        staging.rename(target)
-        size = sum(f.stat().st_size for f in target.rglob('*') if f.is_file()) / 1e6
-        print(f'OK: {target} ({size:.1f} MB)')
+        if args.fp16:
+            install(args.fp16, FP16_NAME, pathlib.Path(tmp) / 'fp16')
+        if args.nir:
+            install(args.nir, NIR_NAME, pathlib.Path(tmp) / 'nir')
+    old = DEST / REMOVED
+    if old.exists():
+        shutil.rmtree(old)
+        print(f'Removed {old} (no longer part of the app / 已不再包含在 App 中)')
     print('Open RodentLimb.xcodeproj, Product > Clean Build Folder, then Run on your iPhone.')
     print('打开 RodentLimb.xcodeproj，Product > Clean Build Folder，然后在 iPhone 上运行。')
 

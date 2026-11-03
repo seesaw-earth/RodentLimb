@@ -15,6 +15,11 @@ import QuartzCore
 ///    the overlay reads it every display refresh, so keypoints stay locked to the picture.
 /// Scrubbing uses the "chase seek" pattern (Apple Technical Q&A QA1820): only one seek is in
 /// flight; while it runs, newer targets replace each other and the latest is sought next.
+/// Seeks are only issued once the item is `.readyToPlay`: AVPlayer raises an uncaught
+/// NSInvalidArgumentException ("AVPlayerItem cannot service a seek request with a completion
+/// handler until its status is AVPlayerItemStatusReadyToPlay") otherwise, which crashed the app
+/// when a chart or event was tapped right after opening a session. Earlier targets are kept and
+/// sought as soon as the item becomes ready.
 @MainActor
 final class PlayerController: ObservableObject {
     let player: AVPlayer
@@ -22,12 +27,18 @@ final class PlayerController: ObservableObject {
     @Published private(set) var frameTime: Double = 0
     @Published private(set) var isPlaying = false
     @Published private(set) var isScrubbing = false
+    /// The video item can be played and sought.
+    @Published private(set) var isReady = false
+    /// The video could not be opened (missing or unreadable file).
+    @Published private(set) var failed = false
     @Published var rate: Float = 1
     let fps: Double
     /// Video-timeline time of the first frame (track time = player time − offset).
     let offset: Double
     private let videoOutput = AVPlayerItemVideoOutput(pixelBufferAttributes: nil)
-    private var observer: Any?
+    /// Removes the periodic time observer when released (no `deinit` needed on this main-actor class).
+    private var timeObserver: TimeObserverToken?
+    private var statusObservation: NSKeyValueObservation?
     private var seeking = false
     private var pendingTarget: Double?
     private var resumeAfterScrub = false
@@ -38,10 +49,41 @@ final class PlayerController: ObservableObject {
         player = AVPlayer(playerItem: item)
         player.isMuted = true
         player.automaticallyWaitsToMinimizeStalling = false
-        self.fps = fps > 1 ? fps : 30
-        self.offset = offset
-        observer = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 10), queue: .main) { [weak self] t in
+        self.fps = fps.isFinite && fps > 1 ? fps : 30
+        self.offset = offset.isFinite ? offset : 0
+        statusObservation = item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
+            let status = item.status
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.statusChanged(status) }
+            }
+        }
+        addTimeObserver()
+    }
+
+    private func addTimeObserver() {
+        guard timeObserver == nil else { return }
+        let token = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 10), queue: .main) { [weak self] t in
             MainActor.assumeIsolated { self?.tick(t) }
+        }
+        timeObserver = TimeObserverToken(player: player, token: token)
+    }
+
+    private func statusChanged(_ status: AVPlayerItem.Status) {
+        switch status {
+        case .readyToPlay:
+            guard !isReady else { return }
+            isReady = true
+            failed = false
+            // Run the seek that was requested while the item was still loading.
+            if pendingTarget != nil && !seeking { seekNext() }
+        case .failed:
+            isReady = false
+            failed = true
+            pendingTarget = nil
+            seeking = false
+            isPlaying = false
+        default:
+            break
         }
     }
 
@@ -65,13 +107,31 @@ final class PlayerController: ObservableObject {
         return c.isFinite ? max(0, c - offset) : frameTime
     }
 
+    /// Stops playback for good (session deleted or tracking re-run). For leaving the screen
+    /// temporarily (switching tabs), use `pause()`: the controller is kept and must keep its
+    /// time observer, otherwise the clock freezes when the user comes back.
+    /// Stops and releases the video now (not whenever the last reference goes away): pending seeks are
+    /// cancelled and the item is taken off the player, so its decoder and file are closed at once.
+    /// Opening and closing sessions quickly otherwise leaves half-open players decoding the same file.
     func teardown() {
         player.pause()
-        if let observer { player.removeTimeObserver(observer) }
-        observer = nil
+        isPlaying = false
+        timeObserver = nil
+        statusObservation?.invalidate()
+        statusObservation = nil
+        pendingTarget = nil
+        seeking = false
+        isReady = false
+        if let item = player.currentItem {
+            item.cancelPendingSeeks()
+            if item.outputs.contains(where: { $0 === videoOutput }) { item.remove(videoOutput) }
+            item.asset.cancelLoading()
+        }
+        player.replaceCurrentItem(with: nil)
     }
 
     func toggle() {
+        guard !failed else { return }
         if player.timeControlStatus == .playing {
             pause()
         } else {
@@ -95,6 +155,7 @@ final class PlayerController: ObservableObject {
 
     /// Jump to a track time (exact frame).
     func seek(_ t: Double) {
+        guard t.isFinite else { return }
         time = max(0, t)
         chase(time)
     }
@@ -117,6 +178,7 @@ final class PlayerController: ObservableObject {
     }
 
     func scrub(to t: Double) {
+        guard t.isFinite else { return }
         time = max(0, t)
         chase(time)
     }
@@ -133,15 +195,20 @@ final class PlayerController: ObservableObject {
     }
 
     private func chase(_ target: Double) {
+        guard !failed else { return }
         pendingTarget = target
         if !seeking { seekNext() }
     }
 
     private func seekNext() {
+        // Not ready yet: keep the target; `statusChanged` seeks to it once the item is ready.
+        guard isReady, player.currentItem?.status == .readyToPlay else { seeking = false; return }
         guard let target = pendingTarget else { seeking = false; return }
         pendingTarget = nil
+        let seconds = target + offset
+        guard seconds.isFinite else { seeking = false; return }
         seeking = true
-        let ct = CMTime(seconds: target + offset, preferredTimescale: 6000)
+        let ct = CMTime(seconds: seconds, preferredTimescale: 6000)
         player.seek(to: ct, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
@@ -158,6 +225,17 @@ final class PlayerController: ObservableObject {
             }
         }
     }
+}
+
+/// Owns an AVPlayer periodic time observer and removes it when released.
+final class TimeObserverToken {
+    private let player: AVPlayer
+    private let token: Any
+    init(player: AVPlayer, token: Any) {
+        self.player = player
+        self.token = token
+    }
+    deinit { player.removeTimeObserver(token) }
 }
 
 struct PlayerLayerView: UIViewRepresentable {
@@ -177,13 +255,20 @@ struct PlayerLayerView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: LayerView, context: Context) {
-        uiView.playerLayer.player = player
+        if uiView.playerLayer.player !== player { uiView.playerLayer.player = player }
+    }
+
+    /// The layer lets go of the player when the view goes away.
+    static func dismantleUIView(_ uiView: LayerView, coordinator: ()) {
+        uiView.playerLayer.player = nil
     }
 }
 
 /// Status chip shown on top of the video for the current frame.
 struct OverlayChip: Identifiable {
-    let id = UUID()
+    /// Identified by its text: chips are rebuilt for every frame shown, and a new random id each time
+    /// would replace the chip views each time.
+    var id: String { text }
     var text: String
     var color: Color
 }
@@ -217,6 +302,15 @@ struct ReviewPlayer: View {
                     .allowsHitTesting(false)
                 }
                 chips.padding(8)
+                if controller.failed {
+                    Text(L("This video can't be played. The file may be missing or damaged.",
+                           "无法播放该视频，文件可能已丢失或损坏。"))
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .allowsHitTesting(false)
+                }
             }
             .aspectRatio(videoSize.width / max(1, videoSize.height), contentMode: .fit)
             .frame(maxHeight: 460)
@@ -345,6 +439,23 @@ struct ReviewPlayer: View {
                 let codes = Kp.paws.filter { st.contains(session.params.gait.swapLR ? $0.mirrored : $0) }.map(\.code)
                 out.append(OverlayChip(text: L("Stance ", "支撑 ") + codes.joined(separator: " "), color: Color.black.opacity(0.55)))
             }
+        case .itch, .pain, .grooming, .seizure:
+            guard let d = result?.behavior else { break }
+            // Brief events (flinches, jerks) stay visible for at least 0.3 s.
+            for e in d.events where e.label != EventClass.ignore.key && t >= e.onset - 0.02 && t < max(e.offset, e.onset + 0.3) {
+                let c = d.eventClass(e.label)
+                out.append(OverlayChip(text: c.label.text, color: Color(uiColor: UIColor(hex: c.color))))
+            }
+            for tr in d.tracks where !d.classes.contains(where: { $0.key == tr.key }) {
+                // Tracks that are not events (e.g. grooming regions) show what is happening now.
+                if tr.intervals.contains(where: { t >= $0.start && t < $0.end }) {
+                    out.append(OverlayChip(text: tr.label.text, color: Color(uiColor: UIColor(hex: tr.color))))
+                }
+            }
+            if d.origin > 0 {
+                out.append(OverlayChip(text: String(format: L("%@ after injection", "注射后 %@"), Fmt.clock(max(0, t - d.origin))),
+                                       color: Color.black.opacity(0.55)))
+            }
         }
         return out
     }
@@ -374,20 +485,18 @@ struct ReviewPlayer: View {
             HStack(spacing: 4) {
                 Text(Fmt.clockPrecise(controller.time)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                 Spacer()
-                Button { controller.step(-1); stepTick += 1 } label: { Image(systemName: "backward.frame.fill").frame(width: 44, height: 36) }
+                Button { controller.step(-1); stepTick += 1 } label: { Image(systemName: "backward.frame.fill").frame(width: 44, height: 44) }
                     .accessibilityLabel(L("Previous frame", "上一帧"))
                 Button { controller.toggle() } label: {
-                    Image(systemName: controller.isPlaying ? "pause.fill" : "play.fill").font(.title3).frame(width: 52, height: 36)
+                    Image(systemName: controller.isPlaying ? "pause.fill" : "play.fill").font(.title3).frame(width: 52, height: 44)
                 }
                 .accessibilityLabel(controller.isPlaying ? L("Pause", "暂停") : L("Play", "播放"))
-                Button { controller.step(1); stepTick += 1 } label: { Image(systemName: "forward.frame.fill").frame(width: 44, height: 36) }
+                Button { controller.step(1); stepTick += 1 } label: { Image(systemName: "forward.frame.fill").frame(width: 44, height: 44) }
                     .accessibilityLabel(L("Next frame", "下一帧"))
                 Spacer()
                 Menu {
-                    ForEach([Float(0.25), 0.5, 1, 2, 4], id: \.self) { r in
-                        Button { controller.setRate(r) } label: {
-                            if controller.rate == r { Label(String(format: "%g×", r), systemImage: "checkmark") } else { Text(String(format: "%g×", r)) }
-                        }
+                    Picker(L("Speed", "速度"), selection: Binding(get: { controller.rate }, set: { controller.setRate($0) })) {
+                        ForEach([Float(0.25), 0.5, 1, 2, 4], id: \.self) { r in Text(String(format: "%g×", r)).tag(r) }
                     }
                     Divider()
                     Toggle(L("Show keypoints", "显示关键点"), isOn: $showSkeleton)

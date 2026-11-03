@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If RodentLimb contributes to published work, please cite the version you used, and the pose model's software and training data (see https://seesaw-earth.github.io/RodentLimb/models/cite.html)."
+title: "RodentLimb: limb pose and behavior scoring for mouse videos"
+type: software
+authors:
+  - family-names: Shi
+    given-names: Ziqing
+    affiliation: Yale School of Medicine
+version: 1.4.2
+date-released: 2026-11-03
+license: AGPL-3.0-only
+repository-code: "https://github.com/seesaw-earth/RodentLimb"
+url: "https://seesaw-earth.github.io/RodentLimb/"
+keywords:
+  - pose estimation
+  - mouse behavior
+  - gait
+  - tail suspension
+  - Core ML

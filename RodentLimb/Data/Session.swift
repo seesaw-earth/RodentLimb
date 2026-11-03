@@ -1,4 +1,7 @@
-// Session.swift — one video of one animal in one assay.
+// Session.swift — one analysis: one task (assay) applied to one recording (video).
+// Since 1.3 the video, its pose and QC belong to the Recording (`recordingID`); the subject,
+// group, status and video facts here are kept in sync with it by SessionStore so that lists and
+// the analyzers can keep reading them from the session.
 
 import Foundation
 import CoreGraphics
@@ -29,6 +32,8 @@ enum SessionStatus: String, Codable {
 
 struct Session: Codable, Identifiable, Equatable {
     var id: UUID
+    /// The video this analysis belongs to (nil only in files written before 1.3).
+    var recordingID: UUID?
     var assay: Assay
     var subject: String
     var group: String
@@ -46,6 +51,9 @@ struct Session: Codable, Identifiable, Equatable {
     var calibration: Calibration
     var params: AssayParams
     var overrides: [Int: PawLabel]
+    /// Reviewer edits of behavior-assay events (onset frame → class key). Optional so sessions
+    /// saved before the behavior assays existed still decode.
+    var eventOverrides: [Int: String]?
     var hasPose: Bool
     var hasSkeletonVideo: Bool
     var modelVersion: String?
@@ -82,7 +90,7 @@ struct Session: Codable, Identifiable, Equatable {
     /// Whether the current calibration is enough to analyze.
     var isCalibrated: Bool {
         switch assay {
-        case .tailSuspension, .gait: return true
+        case .tailSuspension, .gait, .itch, .pain, .grooming, .seizure: return true
         case .cylinder:
             return params.cylinder.view == .bottom ? calibration.circle != nil : calibration.floorY != nil
         }
@@ -100,6 +108,18 @@ enum Analyzer {
             result = CylinderAnalyzer.run(series, session.params.cylinder, calibration: session.calibration, overrides: session.overrides)
         case .gait:
             result = GaitAnalyzer.run(series, session.params.gait, calibration: session.calibration)
+        case .itch:
+            result = ItchAnalyzer.run(track: track, series: series, params: session.params.itch,
+                                      overrides: session.eventOverrides ?? [:])
+        case .pain:
+            result = PainAnalyzer.run(track: track, series: series, params: session.params.pain,
+                                      overrides: session.eventOverrides ?? [:])
+        case .grooming:
+            result = GroomingAnalyzer.run(track: track, series: series, params: session.params.grooming,
+                                          overrides: session.eventOverrides ?? [:])
+        case .seizure:
+            result = SeizureAnalyzer.run(track: track, series: series, params: session.params.seizure,
+                                         overrides: session.eventOverrides ?? [:])
         }
         if track.detectedFraction < 0.5 {
             result.notes.insert(Note(.warning,
@@ -108,8 +128,8 @@ enum Analyzer {
         }
         if session.assay != .cylinder && track.detectedFraction >= 0.5 && result.poseCoverage < 0.6 {
             result.notes.append(Note(.info,
-                                     "CylinderMousePoseV2 was trained on cylinder videos. For this assay, keypoints may be less reliable; check the overlay in the review player.",
-                                     "CylinderMousePoseV2 基于圆筒视频训练，用于本范式时关键点可能不够可靠，请在回放中检查叠加的关键点。"))
+                                     "The visible-light pose model was trained on cylinder videos. For this assay, keypoints may be less reliable; check the overlay in the review player.",
+                                     "可见光姿态模型基于圆筒视频训练，用于本范式时关键点可能不够可靠，请在回放中检查叠加的关键点。"))
         }
         return result
     }
