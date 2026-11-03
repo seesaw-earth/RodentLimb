@@ -1,91 +1,97 @@
 ---
 layout: home
 title: RodentLimb
-titleTemplate: 使用手册
+titleTemplate: 小鼠视频的肢体姿态与行为评分
 
 hero:
   name: RodentLimb
-  text: 在 iPhone 上完成肢体姿态与运动行为分析
-  tagline: 逐帧识别四只爪、鼻尖和尾根，完成悬尾、圆筒和步态实验的分析。全部在手机上运行，不上传任何数据。
+  text: 在 Mac 上完成小鼠视频的肢体姿态与行为评分
+  tagline: 在长视频的每一帧中识别四只爪、鼻尖、嘴和尾根，然后完成七项实验的评分：从悬尾、步态到瘙痒、疼痛、理毛和癫痫。全部在 Mac 本机运行，不上传任何数据。
   image:
     src: /hero.png
     alt: RodentLimb 图标
   actions:
     - theme: brand
+      text: Mac App Store
+      link: https://apps.apple.com/app/id6822935387
+    - theme: alt
       text: 快速上手
       link: /zh/guide/getting-started
     - theme: alt
-      text: 实验范式
-      link: /zh/assays/
-    - theme: alt
-      text: GitHub 源代码
-      link: https://github.com/seesaw-earth/RodentLimb
+      text: 姿态模型与来源
+      link: /zh/models/
     - theme: alt
       text: English
       link: /
 
 features:
-  - title: 七个关键点，逐帧识别
-    details: 基于小鼠视频训练的姿态模型，在 iPhone 本机上逐帧找出四只爪、尾根、鼻尖和嘴。
-    link: /zh/principles/pose
-    linkText: 姿态模型
-  - title: 悬尾实验
-    details: 不动时间与比例、潜伏期、不动次数、逐分钟曲线、爬尾比例，以及后肢抱握的估计评分。
-    link: /zh/assays/tail-suspension
-    linkText: 悬尾实验
-  - title: 圆筒实验
-    details: 竖立时左爪、右爪、双爪触壁，以及相对损伤侧的不对称指标。每一次触壁都可以回放并修改标签。
-    link: /zh/assays/cylinder
-    linkText: 圆筒实验
-  - title: 步态分析
-    details: 支撑相、摆动相、步幅、占空比、支撑面宽度、肢间相位、步态模式与全身摆动，并给出共同参考速度下的速度匹配值。
-    link: /zh/assays/gait
-    linkText: 步态分析
-  - title: 改参数，结果即时更新
-    details: 每段视频只运行一次模型。阈值、分析窗口和标定都可以事后修改，结果立即重算。
-    link: /zh/guide/parameters
-    linkText: 参数
-  - title: 隐私与开源
-    details: 无需账号，无统计分析，不联网。导出为英文，附带可直接引用的方法描述。源代码公开。
-    link: /zh/source
-    linkText: 源代码
+  - title: 两个姿态模型，按光照选择
+    details: CylinderPose7 用于普通室内光视频，PalmReaderPose8 用于暗箱中从下方拍摄的近红外视频。两者都通过 Core ML 在 Mac 上运行。
+    link: /zh/models/
+    linkText: 模型与来源
+  - title: 一套流程，七项实验
+    details: 悬尾、圆筒、步态、瘙痒、自发痛行为、自我理毛和癫痫发作评分。每个事件都可以在视频上回放并修改标签。
+    link: /zh/assays/
+    linkText: 实验任务
+  - title: 为通宵批处理而设计
+    details: 把一整个文件夹的视频拖进来。队列逐帧识别并写入检查点，暂停、崩溃或断电只损失几秒，而不是几小时。
+    link: /zh/guide/processing
+    linkText: 处理队列
+  - title: 先质控，再评分
+    details: 每个研究在分析前设定纳入标准。每段视频得到通过、需检查或不通过的结论，每次排除都保留原因。
+    link: /zh/guide/qc
+    linkText: 质量控制
+  - title: 研究设计、盲法与规范导出
+    details: 因素、时间点、随机分组和盲法。每个任务一张长格式表，一张行为片段表，一段方法学文字，以及 BORIS / DeepLabCut 格式。
+    link: /zh/guide/export
+    linkText: 导出
+  - title: 隐私优先
+    details: 无需账号，不联网，无统计分析。视频保留在原处，只读取不修改。支持英文和简体中文。
+    link: /zh/privacy
+    linkText: 隐私政策
 ---
 
 <div class="rf-home">
 
-<p class="rf-lang">语言：<a href="../index.html">English</a> · <a href="./index.html">简体中文</a></p>
-
 ## 工作流程
 
-模型对每段视频只读取一次，并保存关键点。之后的预处理、范式分析和结果都很快，每次修改参数或标签时都会重新计算。
+1. **导入。** 把视频或整个文件夹拖进窗口。动物编号、时间点和试次从文件名读出；按光照条件选择姿态模型。
+2. **识别。** 姿态模型在后台队列中把每一帧读一遍，并保存关键点。
+3. **检查。** 每段视频按研究设定的标准得到质控结论；其余视频由你纳入或排除，并写明原因。
+4. **评分。** 分配一个或多个任务。修改参数时结果立即更新，因为模型不需要再运行。
+5. **复核与导出。** 在视频上回放每个检测到的事件，修正标签，然后为整个研究导出数据表、行为片段和方法学文字。
 
-<figure>
+## 姿态模型
 
-![从视频到结果](/img/pipeline.zh.svg)
+| 模型 | 适用视频 | 使用的关键点 | 训练数据 |
+|---|---|---|---|
+| [**CylinderPose7**（默认）](./models/cylinderpose7.md) | 普通室内光，通常从透明底板下方拍摄 | 四爪、尾根、鼻尖、嘴 | 一个实验室的圆筒实验录像：543 帧人工标注 + 20,000 帧清洗后的 DeepLabCut 预测 |
+| [**PalmReaderPose8**](./models/palmreader8.md) | 黑暗中从下方拍摄、近红外光照明（暗箱装置） | 四爪、尾根、吻端（存为鼻尖） | Barkai 等（2025）公开的 DeepLabCut 训练集中 409 帧人工标注 |
 
-</figure>
+两者都是输入 640 像素的 Ultralytics YOLO26s-pose 网络，导出为 Core ML。数据来源、训练与测试方法以及引用方式见[模型与来源](./models/)。
 
-## 实验范式
+## 实验任务
 
-| 范式 | 主要指标 | 拍摄方式 |
-|---|---|---|
-| [悬尾实验](./assays/tail-suspension.md) | 不动时间（秒、%）、潜伏期、不动次数、抱握评分、爬尾 | 悬挂小鼠的正面或背面 |
-| [圆筒实验](./assays/cylinder.md) | 左爪 / 右爪 / 双爪触壁、对侧使用率、不对称指数 | 透明底面下方仰拍（或侧拍） |
-| [步态分析](./assays/gait.md) | 步幅、支撑相、摆动相、占空比、支撑面宽度、相位、步态模式、摆动 | 透明步道下方仰拍，≥ 60 fps |
+| 任务 | 主要指标 |
+|---|---|
+| [悬尾实验](./assays/tail-suspension.md) | 不动时间与百分比、潜伏期、不动回合、逐分钟曲线、爬尾、估计的后肢抱握评分 |
+| [圆筒实验](./assays/cylinder.md) | 左爪、右爪和双爪触壁次数，对侧使用率，不对称指数 |
+| [步态分析](./assays/gait.md) | 步幅、支撑相、摆动相、占空比、支撑基宽、肢间相位、步态模式、速度匹配值 |
+| [瘙痒（抓挠）](./assays/itch.md) | 致痒剂注射后的抓挠回合、时间、潜伏期和抓挠串，哪只后爪，时间进程 |
+| [自发痛行为](./assays/pain.md) | 注射爪的舔咬和缩爪/甩爪，福尔马林 I / II 相，时间进程 |
+| [自我理毛](./assays/grooming.md) | 理毛时间、回合、潜伏期、身体部位、中断回合与错误转换 |
+| [癫痫发作评分](./assays/seizure.md) | 肌阵挛抽动、阵挛和强直-阵挛发作、潜伏期、估计的 Racine 分级 |
 
-## 开源
+## 适合谁
 
-RodentLimb 以 GNU AGPL-3.0 开源。分析代码、每个指标的定义和本手册都在同一个公开仓库中，你可以确切地看到每个数字是如何算出来的。
+在标准行为实验中拍摄小鼠、希望得到关键点级别的指标，又不想写代码或把视频发到别处的实验室。RodentLimb 给出数字、背后的事件和方法学文字；它不能代替人工抽查一部分视频。见[验证与局限](./principles/validation.md)。
 
-<p class="rf-repo"><a href="https://github.com/seesaw-earth/RodentLimb">github.com/seesaw-earth/RodentLimb</a></p>
+## Mac、iPhone 与 iPad
 
-## 从这里开始
+RodentLimb for Mac 为大批量长视频设计。iPhone 和 iPad 版使用同一套分析代码和同样的资料库格式，资料库可以在设备之间拷贝，在任一端打开。见 [iPhone 与 iPad](./guide/iphone.md)。
 
-<div class="rf-cards">
-  <a href="./guide/getting-started.html"><strong>快速上手</strong><span>几分钟内从一段视频得到第一个结果。</span></a>
-  <a href="./guide/recording.html"><strong>拍摄要点</strong><span>相机位置、光线和帧率，让爪的识别更可靠。</span></a>
-  <a href="./assays/index.html"><strong>范式说明</strong><span>每个范式测什么，每个数值如何定义。</span></a>
-  <a href="./principles/validation.html"><strong>验证</strong><span>哪些已与真值对照验证，哪些需要你自己核对。</span></a>
-</div>
+## 引用
+
+如果 RodentLimb 对发表的工作有贡献，请引用 App 及其版本，以及所用姿态模型的数据和软件。具体文献见[如何引用](./models/cite.md)。
 
 </div>

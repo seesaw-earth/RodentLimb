@@ -26,7 +26,7 @@ Dropouts of one or two frames are bridged. A run of such frames lasting at least
 
 ## Checking and correcting
 
-Open **Review**. Each contact is listed with its time. Tap to play it, and change its label to *Left, Right, Both* or *Ignore* if the automatic call is wrong. Edits are stored by frame, kept when parameters change, counted in *Manually edited events*, and exported in `…_contacts.csv` (auto and final label).
+Open **Review**. Each contact is listed with its time. Select it to play it (↑ / ↓ steps through the list), and change its label to *Left, Right, Both* or *Ignore* with the number keys if the automatic call is wrong. Edits are stored by frame, kept when parameters change, counted in *Manually edited events*, and exported in the segments table (automatic and reviewed label).
 
 ## Measures
 
@@ -62,3 +62,16 @@ Set the **lesioned hemisphere** in Parameters to get the lesion-relative measure
 | Simultaneous window | 0.20 s | Left + right within this = both |
 | Rear gap | 0.5 s | Placements closer than this form one rear |
 | Score first / contact limit | none | Time or count limit |
+
+## Presets
+
+| Preset | Setting | Source |
+|---|---|---|
+| First 20 contacts | Scoring stops after 20 contacts | Schallert et al., 2000 |
+| 5-minute session | All contacts in the first 5 min | Bentea et al., 2025 (protocols.io) |
+| **Whole video** (default) | No limit | |
+
+## References
+
+- Schallert T., Fleming S.M., Leasure J.L., Tillerson J.L., Bland S.T. (2000) CNS plasticity and assessment of forelimb sensorimotor outcome in unilateral rat models of stroke, cortical ablation, parkinsonism and spinal cord injury. *Neuropharmacology* 39:777–787.
+- Magno L.A.V. et al. (2019) Cylinder test to assess sensory-motor function in a mouse model of Parkinson's disease. *Bio-protocol* 9(16):e3337.

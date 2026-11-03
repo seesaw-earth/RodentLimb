@@ -207,6 +207,38 @@
 .rf-cards a.tst { border-left: 4px solid #7c4ddb; }
 .rf-cards a.cyl { border-left: 4px solid #0b7480; }
 .rf-cards a.gait { border-left: 4px solid #ab4f08; }
+.rf-cards a.itch { border-left: 4px solid #b0306a; }
+.rf-cards a.pain { border-left: 4px solid #c62828; }
+.rf-cards a.groom { border-left: 4px solid #2e7d32; }
+.rf-cards a.sz { border-left: 4px solid #3949ab; }
 
 /* Diagrams are SVG with their own white background. */
 .vp-doc figure img[src$=".svg"] { padding: 8px; }
+
+/* One language switch only: the visible English / 中文 link (LangSwitch.vue) replaces the icon menu. */
+.VPNavBarTranslations {
+  display: none !important;
+}
+
+/* Key–value tables (model cards): labels in the first column, no header row. */
+.vp-doc table.rf-kv th {
+  white-space: normal;
+  min-width: 9em;
+  text-align: left;
+  vertical-align: top;
+  background: var(--vp-c-bg-soft);
+}
+
+/* Small capitals above a page title. */
+.vp-doc .rf-eyebrow {
+  margin: -8px 0 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--vp-c-text-2);
+}
+
+/* Reference-list anchors land below the fixed navigation bar. */
+.vp-doc li > span[id]:first-child {
+  scroll-margin-top: calc(var(--vp-nav-height) + 24px);
+}
