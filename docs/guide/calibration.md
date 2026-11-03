@@ -1,32 +1,29 @@
 # Calibration
 
-Calibration tells the app where the apparatus is in the picture. It is needed for the **cylinder test**, optional for **gait**, and not used for **tail suspension**.
+Calibration tells RodentLimb where the apparatus is in the picture. It is needed for the **cylinder test**, optional for **gait**, and not used by the other tasks.
 
-Open it from the session's bottom bar (**Calibrate**) or from the card that appears when a session needs it. You can calibrate while a video is still waiting in the queue.
+Open it from the analysis (**Calibration**). It opens in its own window, on a frame of the video.
 
 ## Working with the frame
 
-- Move the **frame slider** to a moment where the apparatus is clearly visible.
-- The keypoints of that frame are drawn to help you place the marks.
-- While you drag a handle, a **loupe** magnifies the area under your finger.
+- Pick a **calibration frame** with the time slider, or step ±1 s, to a moment where the apparatus is clearly visible.
+- **Show keypoints of this frame** draws the tracked points to help you place the marks.
+- Drag the handles with the mouse; a **loupe** magnifies the point under the cursor while you drag. Nudge a selected handle with the arrow keys, or type exact values (in video pixels).
 
 ## Cylinder, bottom view: the rim circle
 
-Drag **inside** the circle to move it, and drag its **edge** to resize it. Match the inner rim of the cylinder floor. The dashed inner circle shows the **wall zone**: a still paw between the two circles counts as being on the wall.
+Match the circle to the inner rim of the cylinder floor: drag inside it to move it, drag its edge to resize it. The inner dashed circle shows the **wall zone**: a still forepaw between the two circles counts as being on the wall.
 
-**Auto-fit from tracking** fits the circle to where the keypoints went during the whole video. The mouse explores the whole floor, so this is usually a good start.
+**Auto-fit from Tracking** fits the circle to where the keypoints went during the video. The mouse explores the whole floor, so this is usually a good start. It is available once the video has been tracked.
 
 ## Cylinder, side view: the floor line
 
-Drag the dashed line onto the cylinder floor. **Estimate from hind paws** places it at the lowest hind-paw positions. A forepaw raised above this line by the *paw height* parameter counts as raised.
+Choose **Side view** under *Camera* and drag the dashed line onto the cylinder floor. **Estimate from Hind Paws** places it at the lowest hind-paw positions. A forepaw raised above the line by the *paw height* parameter counts as raised.
 
 ## Gait: the cm ruler
 
-Drag both ends onto marks a known distance apart (a ruler, or the walkway width), then enter the distance. The app shows the resulting px/cm. **Remove scale** returns to body-length units.
+Drag both ends onto marks a known distance apart (a ruler, or the walkway width) and enter the **known distance**. The window shows the resulting scale in px/cm. **Remove Scale** reports lengths in body lengths again.
 
-## Reusing a calibration
+## One camera position, many videos
 
-- **Save for this video** saves only the current session.
-- **Save and use for all videos of this assay** copies it to every session of that assay. Do this only if the camera did not move.
-
-New sessions automatically start with the calibration and parameters of the last session of the same assay. A note on the result reminds you to check it.
+**Save** stores the calibration for this analysis and recomputes it. **Save and Use for All** also applies it to the other analyses of this task in the study; use it only when the camera did not move. A note on each of those results says which video the calibration was copied from, so you can check it.

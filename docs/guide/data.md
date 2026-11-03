@@ -1,34 +1,33 @@
-# Data, groups & export
+# Studies, groups & blinding
 
-## The Data tab
+A **study** holds the design of an experiment. RodentLimb follows what the ARRIVE 2.0 guidelines ask to be reported: the design and groups, the experimental unit (the animal), the exact n per group, inclusion and exclusion criteria set in advance, randomization and blinding. Sex is recorded for every animal, in line with the NIH policy on sex as a biological variable.
 
-All sessions in one list.
+Create a study with **File › New Study…** (⇧⌘N). Edit its design later with ⇧⌘D on the study page.
 
-- **Filter** by assay (All, TST, CYL, GAIT) and **search** by subject, group or file name.
-- **Swipe left** on a row to delete it.
-- **Select** turns on multi-selection for export or deletion.
-- **Compare groups** (when an assay is selected) opens the group comparison.
+## Design
+
+- **Factors** (between subjects), each with levels, for example *Genotype: WT, KO* and *Treatment: Vehicle, Drug*. The first level is the reference (control) level.
+- **Timepoints** (within subjects), for example *Baseline, Day 7, Day 14*, and trials within a timepoint.
+- **Animals** with sex, batch and cage.
+- **Inclusion criteria (QC)**, set before scoring. See [Quality control & inclusion](./qc.md).
+
+## Allocation and blinding
+
+- **Randomized allocation** to the factor levels, stratified by sex.
+- **Blinding**: while a study is blinded, animals are shown by a code, groups stay hidden, and the group comparison shows only the overall distribution. Blinded exports leave out the animal ID, the group and the original file name (file names often carry the animal ID).
+
+## Completeness
+
+A table of animals × timepoints shows which videos are present, tracked, included and scored, so missing data are visible before you export.
 
 ## Group comparison
 
-Pick a measure. The chart shows the mean of each group (bar), the SEM (whisker) and each animal (dot), with a table of n, mean, SD and SEM. It is descriptive only: run statistics in your usual software on the exported CSV. Animals are grouped by the **Group** field entered for each session.
+Choose a task, a measure, the grouping (design cells, one factor, sex, or cells × sex) and a timepoint or the time course. Bars or points show mean ± SEM per group with every animal as a dot; the time course shows a line per group with an SEM band.
 
-## Export one session
+- **The animal is the experimental unit**: several trials of one animal at one timepoint are averaged first, so n counts animals.
+- Only included videos are used.
+- The comparison is **descriptive**. For inference, use the exported long-format table, for example two-way or mixed ANOVA, or a linear mixed model with the animal as a random effect for repeated measures.
 
-From a session, tap **Export**. You get:
+## Methods text for the design
 
-- `…_summary.csv`: session information, every measure (key, value, unit) and the notes;
-- the events of the assay: immobility bouts and a per-minute profile, cylinder contacts, or gait strides and footprints;
-- `…_methods.txt`: a methods paragraph with your parameter values and references;
-- optionally `…_pose.csv`: every frame, with x, y and confidence of each keypoint;
-- optionally the skeleton MP4, if it was rendered.
-
-All exports are **in English**, whatever the interface language, so they can go straight into scripts and papers. Columns are listed in [Files & exports](../reference/files.md).
-
-## Export many sessions
-
-In the Data tab, tap **Select**, choose sessions, then **Export CSV**. You get **one wide CSV per assay** with one row per animal (subject, group, video, date, status, then every measure). This is the format most statistics software expects.
-
-## Where the files are
-
-Everything is stored in the app's folder, visible in **Files › On My iPhone › RodentLimb**. Each session has its own folder with the video, the pose data and the result. See [Files & exports](../reference/files.md).
+The study export includes a design paragraph: factors and levels, n per group, timepoints, allocation, blinding, inclusion criteria and the exclusions with their reasons. See [Export](./export.md).

@@ -1,39 +1,33 @@
 # What is RodentLimb?
 
-RodentLimb is an iPhone app for **limb-level analysis of mouse behavior videos**. A pose model finds seven body points in every frame. The app then scores three widely used motor and behavior tests:
+RodentLimb measures mouse behavior at the level of the limbs. A pose model finds the four paws, the tail base, the nose and the mouth in every frame of a video; the app then cleans these trajectories and scores standard tests from them. It runs entirely on your Mac (or iPhone and iPad), without an account or an internet connection.
 
-- **[Tail suspension](../assays/tail-suspension.md)**: immobility, latency, bouts, tail climbing and hindlimb clasping.
-- **[Cylinder test](../assays/cylinder.md)**: forelimb use during rearing (left, right, both) and its asymmetry.
-- **[Gait analysis](../assays/gait.md)**: stance and swing of each paw, stride, duty factor, base of support, interlimb coordination and gait pattern.
+## What it does
 
-It belongs to the same family as **RodentFlow** (centroid tracking and statistics) and **RodentPose** (whole-body pose for open-field and maze assays).
+1. **Tracks keypoints** in every frame with a pose model that runs on the device through Core ML. You choose the model by the lighting of the recording: [CylinderPose7](../models/cylinderpose7.md) for room light, [PalmReaderPose8](../models/palmreader8.md) for near-infrared video filmed from below in the dark.
+2. **Checks tracking quality** for every video against inclusion criteria you set for the study, and records why a video was excluded.
+3. **Scores seven tests** from the same keypoints: tail suspension, cylinder, gait, itch (scratching), spontaneous pain, self-grooming and seizures. Each test reports its measures, the events behind them and a time course.
+4. **Lets you review** every detected event on the video and correct its label; the measures update and the edits are counted in the export.
+5. **Organizes studies**: factors and groups, timepoints, animals, randomized allocation and blinding, with group summaries in which the animal is the unit.
+6. **Exports** long-format tables for R, Python, SPSS or Prism, a behavior-segment table, a methods paragraph with your parameters and references, and files for BORIS, DeepEthogram and DeepLabCut-based tools.
 
-## The seven keypoints
+## Who it is for
 
-| Keypoint | Color in the app |
-|---|---|
-| Left forepaw (LF) | <span class="paw lf"></span>blue |
-| Right forepaw (RF) | <span class="paw rf"></span>red |
-| Left hind paw (LH) | <span class="paw lh"></span>green |
-| Right hind paw (RH) | <span class="paw rh"></span>violet |
-| Tail base | <span class="paw tb"></span>pink |
-| Nose | <span class="paw nose"></span>amber |
-| Mouth | <span class="paw mouth"></span>light blue |
+Laboratories that already film mice in these tests and want reproducible, keypoint-based measures without writing analysis code. The model runs once per video; thresholds, time windows and calibration can be changed afterwards and results update immediately, so you can tune the settings to your own manual scoring.
 
-Left and right refer to the **animal's** body. If your camera mirrors the image, use **Swap left/right** in [Parameters](./parameters.md).
+## The Mac app
 
-## What makes it different
+RodentLimb for Mac is designed for many long videos: drop a folder into the window, let the queue run overnight, then review and export in the morning. Tracking is saved frame by frame, so a pause, a crash, a sleeping laptop or an unplugged drive does not lose work. See [Quick start on Mac](./getting-started.md).
 
-- **Runs once, re-analyze freely.** Pose detection runs once per video. All thresholds, analysis windows and calibration can be changed afterwards, and results update immediately.
-- **Everything is in body lengths.** Distances and speeds are scaled to the animal's own nose–tail-base length, so settings carry over between cameras and zoom levels. A cm scale is optional.
-- **You can check every number.** The review player draws the keypoints on the video. For the cylinder test, every contact can be replayed and relabeled.
-- **Export-ready.** CSV files and a methods paragraph with your exact parameters and references, always in English.
-- **Private.** No account, no network, no analytics. See the [privacy policy](../privacy.md).
+Requirements: macOS 14 Sonoma or later. Apple silicon and Intel Macs are supported; Apple silicon is much faster. Interface: English and Simplified Chinese (switch under **RodentLimb › Language · 语言**). Exports are always in English.
 
-## Requirements
+## iPhone and iPad
 
-iPhone or iPad with **iOS 17 or later**. Interface languages: English and Simplified Chinese (switch in Settings).
+The iPhone and iPad app shares the analysis code and the library format with the Mac app. A library can be copied from the iPhone to the Mac and opened there. See [iPhone & iPad](./iphone.md).
 
-::: tip Research use
-Automated scores support, but do not replace, blinded review of the video. Validate each setup against manual scoring before drawing conclusions; see [Validation](../principles/validation.md).
-:::
+## What it does not do
+
+- It does not diagnose disease and is not a veterinary or clinical tool.
+- It does not replace checking a sample of videos by hand. Default thresholds come from simulated data and published protocols; set them against your own manual scoring before a study. See [Validation & limits](../principles/validation.md).
+- It analyses one mouse per video.
+- It does not record video, and it does not render videos with the skeleton drawn on them.

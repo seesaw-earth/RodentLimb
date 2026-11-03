@@ -6,8 +6,9 @@ outline: false
 
 ## First steps
 
-- **[FAQ & troubleshooting](./reference/faq.md)** covers the most common questions about detection, the three assays and exports.
-- **[Quick start](./guide/getting-started.md)** walks through a complete analysis.
+- **[FAQ & troubleshooting](./reference/faq.md)** covers the most common questions about importing, tracking, the seven tasks and exports.
+- **[Quick start](./guide/getting-started.md)** walks through a first analysis on the Mac.
+- **[Pose models](./models/)** explains which model to choose and how each was made.
 - The search box at the top of this site searches the whole manual.
 
 ## Report a problem or ask a question
@@ -16,12 +17,14 @@ Open an issue on GitHub: **[github.com/seesaw-earth/RodentLimb/issues](https://g
 
 To help us help you, please include:
 
-1. **App version**: Settings tab in the app, or iPhone Settings › General › iPhone Storage › RodentLimb.
-2. **iPhone or iPad model and iOS version.**
-3. **Assay** and roughly how long the video is, plus its frame rate.
-4. **What you did, what you expected, and what happened.**
-5. A **screenshot of the Review tab** showing the keypoints, and if you can share it, a short clip.
-6. For export questions, the **first lines of the CSV**, with real subject IDs replaced if needed.
+1. **App version**: **RodentLimb › About RodentLimb** on the Mac; Settings in the iPhone app.
+2. **Mac model and macOS version** (Apple menu › About This Mac), or iPhone / iPad model and iOS version.
+3. **Pose model** (shown on the video's page) and **task**.
+4. The **video format**: length, frame rate, resolution and codec (shown in the import table and the inspector).
+5. **What you did, what you expected, and what happened.**
+6. A **screenshot of the review player** showing the keypoints, and if you can share it, a short clip.
+7. For tracking failures on the Mac, the relevant lines of the activity log (`Logs/` in the library; **File › Show Library in Finder**).
+8. For export questions, the **first lines of the CSV**, with real animal IDs replaced if needed.
 
 ::: warning Mind what you share
 GitHub issues are public. Do not post unpublished data, identifiable information, or videos you are not allowed to share. A screenshot or a few anonymized rows are usually enough.
@@ -29,10 +32,10 @@ GitHub issues are public. Do not post unpublished data, identifiable information
 
 ## Feature requests
 
-New measures, assays or export formats are welcome as GitHub issues. Please describe the protocol, the measure you need and how your field defines it; a methods reference helps.
+New measures, tasks or export formats are welcome as GitHub issues. Please describe the protocol, the measure you need and how your field defines it; a methods reference helps.
 
 ## About
 
-RodentLimb is developed by Ziqing Shi and released under the GNU AGPL-3.0. It runs entirely on the device and collects no data; see the [privacy policy](./privacy.md).
+RodentLimb is developed by Ziqing Shi and released under the GNU AGPL-3.0. It runs entirely on your Mac or device and collects no data; see the [privacy policy](./privacy.md).
 
-Requirements: iPhone or iPad with iOS 17 or later. Languages: English, Simplified Chinese.
+Requirements: a Mac with macOS 14 Sonoma or later (Apple silicon recommended), or an iPhone or iPad with iOS 17 or later. Languages: English, Simplified Chinese.

@@ -4,7 +4,7 @@ The tail suspension test (Steru et al., 1985) measures how long a mouse hung by 
 
 ## Recording
 
-Film from the **front or back** so both hind paws are visible, starting at suspension. Standard duration: **6 minutes**. See [Recording](../guide/recording.md#tail-suspension).
+Film from the **front or back** so both hind paws are visible, starting at suspension. Standard duration: **6 minutes**. See [Recording videos](../guide/recording.md#per-task).
 
 ## How immobility is scored
 
@@ -63,5 +63,18 @@ Charts: motion over time with immobile bouts shaded, and immobility per minute.
 | Tail-climbing ratio | 0.5 BL | Nose-to-tail-base distance that counts as climbing |
 
 ::: tip Choosing the threshold
-Open a few videos, play the Review tab at 2×, and compare the *Immobile / Mobile* chip with your own judgment. Set the threshold once for the whole study, then use **Apply to all sessions**.
+Open a few videos, play the Review tab at 2×, and compare the *Immobile / Mobile* indicator with your own judgment. Set the threshold once for the whole study, then use **Apply to…** for every analysis of the task.
 :::
+
+## Presets
+
+| Preset | Window | Source |
+|---|---|---|
+| **Last 4 of 6 min** (default) | 2:00–6:00 | Can et al., 2012 |
+| Whole 6 min | 0:00–6:00 | Steru et al., 1985 |
+
+## References
+
+- Steru L., Chermat R., Thierry B., Simon P. (1985) The tail suspension test: a new method for screening antidepressants in mice. *Psychopharmacology* 85:367–370.
+- Can A. et al. (2012) The tail suspension test. *J Vis Exp* 59:e3769.
+- Guyenet S.J. et al. (2010) A simple composite phenotype scoring system for evaluating mouse models of cerebellar ataxia. *J Vis Exp* 39:e1787.

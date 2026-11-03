@@ -4,7 +4,7 @@ RodentLimb measures each paw's **stance** (on the ground) and **swing** (in the 
 
 ## Recording
 
-Bottom view of a straight walkway, **≥ 60 fps**. Put a ruler in view once if you want cm. See [Recording](../guide/recording.md#gait-analysis).
+Bottom view of a straight walkway, **≥ 60 fps**. Put a ruler in view once if you want cm. See [Recording videos](../guide/recording.md#per-task).
 
 ## Stance and swing
 
@@ -96,7 +96,7 @@ A phase of **0.5** means the two paws alternate; **0 or 1** means they move toge
 
 - **Footfall pattern** (Summary and Review): stance bars for LF, RF, LH, RH. In Review it follows the video.
 - **Gait pattern**: share of walk, trot, gallop and bound strides.
-- **Per paw** table, **interlimb coordination** dials and the **footprint** map (Measures).
+- **Per paw** table, **interlimb coordination** dials and the **footprint** map (All measures).
 
 ## Parameters
 
@@ -112,3 +112,20 @@ A phase of **0.5** means the two paws alternate; **0 or 1** means they move toge
 | Maximum stride | 1.0 s | Longer intervals are pauses, not strides |
 | Reference speed | 2.0 BL/s | For speed-matched values |
 | Position smoothing | 0.03 s | Lighter than other assays, because swings last only about 0.1 s |
+
+## Presets
+
+| Preset | Settings | Source |
+|---|---|---|
+| **App default** | ≥ 1 BL/s, turning ≤ 30 °/s, first and last stride of a run dropped | RodentLimb simulations |
+| Open-field strides (JAX) | About 0.5 BL/s (tail base ≥ 5 cm/s), turning ±20 °/s, keypoint confidence > 0.3 | Sheppard et al., 2022 |
+
+## References
+
+- Hamers F.P. et al. (2001) Automated quantitative gait analysis during overground locomotion in the rat. *J Neurotrauma* 18:187–201.
+- Machado A.S. et al. (2015) A quantitative framework for whole-body coordination reveals specific deficits in freely walking ataxic mice. *eLife* 4:e07892.
+- Cheng H. et al. (1997) Gait analysis of adult paraplegic rats after spinal cord repair. *Exp Neurol* 148:544–557.
+- Batka R.J. et al. (2014) The need for speed in rodent locomotion analyses. *Anat Rec* 297:1839–1864.
+- Neckel N.D. (2015) Methods to quantify the velocity dependence of common gait measurements from automated rodent gait analysis devices. *J Neurosci Methods* 253:244–253.
+- Bellardita C., Kiehn O. (2015) Phenotypic characterization of speed-associated gait changes in mice reveals modular organization of locomotor networks. *Curr Biol* 25:1426–1436.
+- Sheppard K. et al. (2022) Stride-level analysis of mouse open field behavior using deep-learning-based pose estimation. *Cell Rep* 38:110231.

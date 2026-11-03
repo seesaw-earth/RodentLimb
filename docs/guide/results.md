@@ -1,38 +1,33 @@
 # Results & review
 
-Open a session from Home or from the Data tab. While pose detection runs, the page shows progress. Afterwards it has three tabs and a bottom bar.
+Open an analysis by double-clicking it in a table, from the study page, or from **Open Analyses** on the Processing page. A result has three tabs (⌥⌘1–3).
 
 ## Summary
 
-- **Headline numbers**: the two to four values that matter most for the assay, for example immobility time and % for tail suspension.
-- **Notes**: warnings and hints, such as low pose coverage, too few contacts or strides, or a low frame rate. Tap to expand them all.
-- **One main chart**: motion over time (tail suspension), forelimb use (cylinder) or the footfall pattern (gait). For tail suspension, tap the chart to jump to that moment in Review.
+The two to four key numbers of the task, notes (for example low pose coverage, a calibration copied from another video, or a frame rate too low for the task), and one chart: the per-minute immobility profile, the scratching time course, the footfall pattern and so on.
 
 ## Review
 
-The review player shows the original video with the keypoints drawn on top.
+The video with the keypoints drawn on it, a timeline with colored blocks for the detected events below, and the list of events on the right.
 
-- **Tap the video** to play or pause.
-- **Drag the slider** to scrub. The picture and the keypoints move together.
-- **Swipe sideways on the video** to move frame by frame (6 points per frame).
-- **◀︎ ▶︎ frame buttons** step one frame.
-- **Rate menu** (0.25×–4×) and **Show keypoints** toggle.
-- **Status chips** on the video: *Immobile / Mobile / Climbing* (tail suspension), *L on wall / R on wall* (cylinder), *Stance LF RH…* (gait).
+| Action | Keys |
+|---|---|
+| Play / pause | Space (or K) |
+| Previous / next frame | ← / → (or , / .) |
+| Back / forward 1 s | ⇧← / ⇧→ |
+| Back 5 s / play | J / L |
+| Previous / next event (the video follows) | ↑ / ↓ |
+| Relabel the selected event | 1–9 for the task's categories, 0 = ignore |
+| Undo a relabel | ⌘Z |
 
-Below the player:
+Relabeling updates the measures at once. Edits are saved with the analysis, kept when parameters change, counted in the result (*Manually edited events*) and written to the methods text and to the behavior-segment table (automatic label, reviewed label and an *edited* flag for every event).
 
-- **Cylinder**: the contact list. Tap a row to play that contact. Use the label button to change it to *Left, Right, Both* or *Ignore*. Edits are kept when you change parameters or re-analyze.
-- **Gait**: the footfall pattern follows the video.
-- **Tail suspension**: the motion chart. Tap it to jump.
+What can be relabeled depends on the task: each cylinder wall contact (left, right, both, ignore), each scratching bout or wiping episode, each licking or flinching event, each grooming bout and region, and each seizure event and stage. Tail suspension and gait are reviewed on their charts and the video.
 
-## Measures
+## All measures
 
-Every value of the assay, grouped into sections (for gait: speed, spatial, temporal, speed-matched, variability, coordination, whole-body posture, quality), followed by the detailed charts. The bottom line shows the model version, frame rate and analysis time.
+Every measure of the task in labelled groups, with the detailed charts: the footprint map and phase dials for gait, the time bins for itch and pain, the ethogram for grooming and seizures. They can be copied to the clipboard.
 
-## Bottom bar
+## Re-running
 
-- **Parameters**: see [Parameters](./parameters.md).
-- **Calibrate**: see [Calibration](./calibration.md) (cylinder and gait).
-- **Export**: see [Data, groups & export](./data.md).
-
-The **⋯** menu has *Edit subject info*, *Re-run tracking* and *Delete*.
+Analyses are recomputed automatically when parameters, calibration or labels change. **Re-analyse** recomputes selected analyses with their current parameters, for example after an app update.
