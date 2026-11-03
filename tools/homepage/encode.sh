@@ -55,7 +55,28 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-command -v ffmpeg >/dev/null || { echo "ffmpeg not found. On a Mac: brew install ffmpeg" >&2; exit 1; }
+# Which ffmpeg: $FFMPEG if set, else the first one that has the x264 encoder (Homebrew's has it;
+# the one in a conda environment often does not). Without x264, the Mac's hardware H.264 encoder
+# (VideoToolbox) is used with a fixed bitrate.
+FF=""; VENC=x264
+for f in "${FFMPEG:-}" /opt/homebrew/bin/ffmpeg /usr/local/bin/ffmpeg $(type -ap ffmpeg 2>/dev/null); do
+  [ -n "$f" ] && [ -x "$f" ] || continue
+  # (read the whole list first: with pipefail, grep -q would end the pipe early and fail it)
+  enc=$("$f" -hide_banner -encoders 2>/dev/null || true)
+  case "$enc" in *" libx264 "*) FF=$f; break;; esac
+done
+if [ -z "$FF" ]; then
+  for f in "${FFMPEG:-}" /opt/homebrew/bin/ffmpeg /usr/local/bin/ffmpeg $(command -v ffmpeg 2>/dev/null); do
+    [ -n "$f" ] && [ -x "$f" ] || continue
+    enc=$("$f" -hide_banner -encoders 2>/dev/null || true)
+    case "$enc" in *h264_videotoolbox*) FF=$f; VENC=vt; break;; esac
+  done
+fi
+[ -n "$FF" ] || { echo "No ffmpeg with an H.264 encoder found. On a Mac: brew install ffmpeg" >&2; exit 1; }
+FP="$(dirname "$FF")/ffprobe"; [ -x "$FP" ] || FP=$(type -P ffprobe || true)
+[ -n "$FP" ] || { echo "ffprobe not found next to $FF. On a Mac: brew install ffmpeg" >&2; exit 1; }
+ffmpeg() { command "$FF" "$@"; }
+ffprobe() { command "$FP" "$@"; }
 [ -f "$IN" ] || { echo "Input not found: $IN" >&2; exit 1; }
 
 # Clips go to docs/public/videos, which the home pages (/ and /zh/) load.
@@ -102,11 +123,19 @@ fi
 
 echo "→ $NAME: ${SRC_W}×${SRC_H}, ${DUR}s from ${START}s, ${SPEED}× → ${FINAL_DUR}s, ${FPS} fps, ${WIDTH}px wide"
 
+if [ "$VENC" = x264 ]; then
+  VARGS=(-c:v libx264 -preset "$PRESET" -crf "$CRF" -level:v 4.1 -sc_threshold 0)
+else
+  # VideoToolbox has no CRF: aim a little under the ceiling.
+  VARGS=(-c:v h264_videotoolbox -allow_sw 1 -b:v "$(awk -v m="${MAXRATE%[kM]}" -v u="${MAXRATE: -1}" 'BEGIN{v=(u=="M")?m*1000:m; printf "%dk", v*0.75}')")
+fi
+echo "  encoder: $([ "$VENC" = x264 ] && echo "x264 ($FF)" || echo "VideoToolbox ($FF)")"
+
 ffmpeg -nostdin -hide_banner -loglevel error -y \
   -ss "$START" -t "$DUR" -i "$IN" \
   -filter_complex "$GRAPH" -map "[v]" -an \
-  -c:v libx264 -preset "$PRESET" -crf "$CRF" -profile:v high -level:v 4.1 -pix_fmt yuv420p \
-  -g "$GOP" -keyint_min "$GOP" -sc_threshold 0 \
+  "${VARGS[@]}" -profile:v high -pix_fmt yuv420p \
+  -g "$GOP" -keyint_min "$GOP" \
   -maxrate "$MAXRATE" -bufsize "$BUF" \
   -movflags +faststart \
   "$OUT"
